@@ -1,0 +1,600 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="家計簿">
+<meta name="theme-color" content="#ffffff">
+<title>家計簿</title>
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/@tabler/icons-webfont@3.19.0/dist/tabler-icons.min.css">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0;-webkit-tap-highlight-color:transparent;}
+html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;color:#1a1a1a;}
+:root{--nav-h:60px;--safe-bottom:env(safe-area-inset-bottom,0px);--green:#1D9E75;--red:#D85A30;--amber:#BA7517;--purple:#534AB7;--blue:#378ADD;--bg:#f5f5f5;--card:#fff;--border:#e5e5e5;--muted:#888;--radius:12px;}
+#app{max-width:430px;margin:0 auto;height:100vh;display:flex;flex-direction:column;background:var(--bg);}
+/* bottom nav */
+#bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;height:calc(var(--nav-h) + var(--safe-bottom));background:#fff;border-top:1px solid var(--border);display:flex;padding-bottom:var(--safe-bottom);z-index:200;}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;cursor:pointer;font-size:10px;color:var(--muted);padding:6px 0;}
+.nav-btn.active{color:#1a1a1a;}
+.nav-btn i{font-size:24px;}
+/* scroll area */
+#pages{flex:1;overflow:hidden;position:relative;}
+.page{position:absolute;inset:0;overflow-y:auto;padding:16px 16px calc(var(--nav-h) + var(--safe-bottom) + 16px);display:none;}
+.page.active{display:block;}
+/* cards */
+.card{background:var(--card);border-radius:var(--radius);padding:16px;margin-bottom:12px;border:1px solid var(--border);}
+/* header */
+.page-title{font-size:18px;font-weight:600;margin-bottom:16px;}
+/* month nav */
+.month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:14px;}
+.month-nav .month-label{font-size:17px;font-weight:600;}
+.month-nav button{background:#fff;border:1px solid var(--border);border-radius:8px;padding:6px 14px;font-size:15px;cursor:pointer;color:#1a1a1a;}
+/* metrics */
+.metrics{display:grid;grid-template-columns:repeat(3,1fr);gap:8px;margin-bottom:14px;}
+.metric{background:#fff;border-radius:10px;padding:12px 8px;border:1px solid var(--border);text-align:center;}
+.metric .mlabel{font-size:11px;color:var(--muted);margin-bottom:4px;}
+.metric .mval{font-size:17px;font-weight:700;}
+.mval.inc,.mval.pos{color:var(--green);}.mval.exp,.mval.neg{color:var(--red);}
+/* asset grid */
+.asset-grid{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-bottom:14px;}
+.asset-card{background:#fff;border-radius:var(--radius);padding:14px;border:1px solid var(--border);}
+.asset-card.credit{border-left:4px solid var(--purple);}
+.asset-card .atype{font-size:11px;color:var(--muted);margin-bottom:2px;}
+.asset-card .aname{font-size:14px;font-weight:600;margin-bottom:4px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.asset-card .abal{font-size:20px;font-weight:700;}
+.asset-card .apending{font-size:11px;color:var(--amber);margin-top:2px;}
+/* section title */
+.sec-title{font-size:13px;font-weight:600;color:var(--muted);margin:16px 0 8px;text-transform:uppercase;letter-spacing:.5px;}
+/* tx list */
+.tx-list{background:#fff;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;}
+.tx-item{display:flex;align-items:center;justify-content:space-between;padding:12px 14px;border-bottom:1px solid var(--border);}
+.tx-item:last-child{border-bottom:none;}
+.tx-left{flex:1;min-width:0;}
+.tx-name{font-size:14px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;}
+.tx-sub{font-size:11px;color:var(--muted);margin-top:2px;}
+.tx-right{display:flex;align-items:center;gap:8px;flex-shrink:0;}
+.tx-amt{font-size:15px;font-weight:700;}
+.tx-amt.inc{color:var(--green);}.tx-amt.exp{color:var(--red);}.tx-amt.pending{color:var(--amber);}
+.del-btn{background:none;border:none;cursor:pointer;color:#ccc;font-size:20px;padding:4px;line-height:1;}
+.del-btn:active{color:var(--red);}
+/* badges */
+.badge{display:inline-block;font-size:10px;padding:2px 6px;border-radius:20px;margin-left:4px;vertical-align:middle;}
+.badge.pending{background:#FFF3CD;color:var(--amber);}
+.badge.settled{background:#D1F5E8;color:var(--green);}
+.badge.card{background:#EEEDFE;color:var(--purple);}
+/* form */
+.form-group{margin-bottom:14px;}
+.form-group label{font-size:13px;font-weight:500;color:var(--muted);display:block;margin-bottom:6px;}
+select,input[type=text],input[type=number],input[type=date]{width:100%;font-size:16px;padding:12px 14px;border:1px solid var(--border);border-radius:10px;background:#fff;color:#1a1a1a;appearance:none;-webkit-appearance:none;}
+select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='12' height='12' viewBox='0 0 24 24'%3E%3Cpath fill='%23888' d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");background-repeat:no-repeat;background-position:right 14px center;padding-right:36px;}
+.btn{width:100%;padding:14px;border-radius:12px;font-size:16px;font-weight:600;cursor:pointer;border:none;transition:opacity .15s;}
+.btn:active{opacity:.75;}
+.btn-primary{background:#1a1a1a;color:#fff;}
+.btn-secondary{background:#fff;color:#1a1a1a;border:1px solid var(--border);margin-top:8px;}
+.btn-green{background:var(--green);color:#fff;margin-top:8px;}
+.row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+/* inner tabs */
+.inner-tabs{display:flex;background:#fff;border-radius:10px;border:1px solid var(--border);padding:3px;gap:3px;margin-bottom:14px;}
+.inner-tab{flex:1;background:none;border:none;padding:8px 4px;font-size:13px;font-weight:500;color:var(--muted);cursor:pointer;border-radius:8px;transition:all .15s;}
+.inner-tab.active{background:#1a1a1a;color:#fff;}
+/* budget bar */
+.budget-item{background:#fff;border-radius:10px;padding:12px 14px;border:1px solid var(--border);margin-bottom:8px;}
+.budget-hd{display:flex;justify-content:space-between;font-size:13px;margin-bottom:8px;}
+.budget-hd .bcat{font-weight:500;}
+.budget-hd .bamt{color:var(--muted);}
+.bbar-wrap{background:#f0f0f0;border-radius:4px;height:7px;}
+.bbar{height:7px;border-radius:4px;transition:width .4s;}
+/* card summary */
+.card-summary-item{background:#fff;border-radius:var(--radius);border:1px solid var(--border);padding:16px;margin-bottom:12px;}
+.cs-name{font-size:16px;font-weight:600;margin-bottom:12px;display:flex;align-items:center;gap:8px;}
+.cs-row{display:flex;justify-content:space-between;font-size:14px;padding:5px 0;border-bottom:1px solid var(--border);}
+.cs-row:last-of-type{border-bottom:none;}
+.cs-row .val{font-weight:500;}
+.cs-row .val.amber{color:var(--amber);}
+.pay-btn{width:100%;margin-top:12px;padding:12px;background:#1a1a1a;color:#fff;border:none;border-radius:10px;font-size:14px;font-weight:600;cursor:pointer;}
+.pay-btn:active{opacity:.75;}
+/* info box */
+.info-box{background:#FFF8E6;border-radius:10px;padding:10px 14px;margin-bottom:10px;font-size:13px;color:var(--amber);}
+/* tag */
+.tag{display:inline-block;background:#f0f0f0;color:var(--muted);font-size:11px;padding:2px 8px;border-radius:20px;}
+/* chart */
+.chart-wrap{position:relative;width:100%;height:220px;margin:8px 0 16px;}
+/* legend */
+.legend{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:8px;}
+.legend-item{display:flex;align-items:center;gap:4px;font-size:12px;color:var(--muted);}
+.legend-dot{width:10px;height:10px;border-radius:2px;flex-shrink:0;}
+.empty{text-align:center;color:var(--muted);padding:32px 16px;font-size:14px;}
+/* cat pill */
+.cat-pills{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:10px;}
+.cat-pill{display:inline-flex;align-items:center;gap:4px;background:#f0f0f0;border-radius:20px;padding:4px 10px;font-size:13px;}
+.cat-pill button{background:none;border:none;cursor:pointer;color:var(--muted);font-size:14px;line-height:1;padding:0 0 0 2px;}
+</style>
+</head>
+<body>
+<div id="app">
+  <div id="pages">
+
+    <!-- ===== HOME ===== -->
+    <div class="page active" id="page-home">
+      <div class="month-nav">
+        <button onclick="chMonth(-1)">‹</button>
+        <span class="month-label" id="mlabel"></span>
+        <button onclick="chMonth(1)">›</button>
+      </div>
+      <div class="metrics">
+        <div class="metric"><div class="mlabel">収入</div><div class="mval inc" id="h-inc">¥0</div></div>
+        <div class="metric"><div class="mlabel">支出</div><div class="mval exp" id="h-exp">¥0</div></div>
+        <div class="metric"><div class="mlabel">残高</div><div class="mval" id="h-bal">¥0</div></div>
+      </div>
+      <div class="sec-title">資産</div>
+      <div class="asset-grid" id="home-assets"></div>
+      <div class="sec-title">今月の取引</div>
+      <div id="home-tx-list"></div>
+    </div>
+
+    <!-- ===== ADD ===== -->
+    <div class="page" id="page-add">
+      <div class="page-title">取引を追加</div>
+      <div class="form-group">
+        <label>種別</label>
+        <select id="a-type" onchange="onTypeChange()">
+          <option value="expense">支出</option>
+          <option value="income">収入</option>
+          <option value="transfer">振替（資産間移動）</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>日付</label>
+        <input type="date" id="a-date">
+      </div>
+      <div class="form-group" id="fg-cat">
+        <label>カテゴリ</label>
+        <select id="a-cat"></select>
+      </div>
+      <div class="form-group">
+        <label>金額（円）</label>
+        <input type="number" id="a-amount" placeholder="0" min="0" inputmode="numeric">
+      </div>
+      <div class="form-group" id="fg-asset">
+        <label id="asset-label">支払い元</label>
+        <select id="a-asset" onchange="onAssetChange()"></select>
+      </div>
+      <div class="form-group" id="fg-to-asset" style="display:none;">
+        <label>振替先</label>
+        <select id="a-to-asset"></select>
+      </div>
+      <div class="info-box" id="fg-card-note" style="display:none;" id="card-note-box">
+        <i class="ti ti-info-circle"></i> <span id="card-note-text"></span>
+      </div>
+      <div class="form-group">
+        <label>メモ（任意）</label>
+        <input type="text" id="a-note" placeholder="">
+      </div>
+      <button class="btn btn-primary" onclick="addTx()">追加する</button>
+    </div>
+
+    <!-- ===== ASSETS ===== -->
+    <div class="page" id="page-assets">
+      <div class="inner-tabs">
+        <button class="inner-tab active" onclick="assetsTab('list',this)">一覧</button>
+        <button class="inner-tab" onclick="assetsTab('card',this)">カード</button>
+        <button class="inner-tab" onclick="assetsTab('add',this)">追加</button>
+      </div>
+      <div id="at-list"><div id="assets-list-container"></div></div>
+      <div id="at-card" style="display:none;">
+        <div class="sec-title">カード請求サマリー</div>
+        <div id="card-summary-container"></div>
+      </div>
+      <div id="at-add" style="display:none;">
+        <div class="page-title" style="font-size:16px;">新しい資産を追加</div>
+        <div class="form-group"><label>名前</label><input type="text" id="na-name" placeholder="例：楽天カード、三菱UFJ"></div>
+        <div class="form-group"><label>種類</label>
+          <select id="na-type" onchange="onNewAssetType()">
+            <option value="wallet">財布</option>
+            <option value="bank">銀行口座</option>
+            <option value="ic">交通系IC</option>
+            <option value="credit">クレジットカード</option>
+            <option value="other">その他</option>
+          </select>
+        </div>
+        <div class="form-group" id="na-balance-wrap">
+          <label>初期残高（円）</label>
+          <input type="number" id="na-balance" placeholder="0" min="0" inputmode="numeric">
+        </div>
+        <div id="na-credit-opts" style="display:none;">
+          <div class="row2">
+            <div class="form-group"><label>締め日（毎月）</label><input type="number" id="na-close" placeholder="15" min="1" max="31" inputmode="numeric"></div>
+            <div class="form-group"><label>支払日（翌月）</label><input type="number" id="na-pay" placeholder="27" min="1" max="31" inputmode="numeric"></div>
+          </div>
+          <div class="form-group"><label>引落口座</label><select id="na-linked"></select></div>
+        </div>
+        <button class="btn btn-primary" onclick="addAsset()">追加する</button>
+      </div>
+    </div>
+
+    <!-- ===== GRAPH ===== -->
+    <div class="page" id="page-graph">
+      <div class="month-nav">
+        <button onclick="chMonth(-1)">‹</button>
+        <span class="month-label" id="g-mlabel"></span>
+        <button onclick="chMonth(1)">›</button>
+      </div>
+      <div class="sec-title">カテゴリ別支出</div>
+      <div class="legend" id="pie-legend"></div>
+      <div class="chart-wrap"><canvas id="pieChart"></canvas></div>
+      <div class="sec-title">月別収支（直近6ヶ月）</div>
+      <div class="legend">
+        <span class="legend-item"><span class="legend-dot" style="background:var(--green)"></span>収入</span>
+        <span class="legend-item"><span class="legend-dot" style="background:var(--red)"></span>支出</span>
+      </div>
+      <div class="chart-wrap"><canvas id="barChart"></canvas></div>
+    </div>
+
+    <!-- ===== SETTINGS ===== -->
+    <div class="page" id="page-settings">
+      <div class="page-title">設定</div>
+      <div class="sec-title">支出カテゴリ</div>
+      <div class="cat-pills" id="cat-list"></div>
+      <div class="row2" style="margin-bottom:16px;">
+        <input type="text" id="new-cat" placeholder="新しいカテゴリ">
+        <button class="btn btn-secondary" style="margin:0;padding:12px;" onclick="addCat()">追加</button>
+      </div>
+      <div class="sec-title">予算設定</div>
+      <div id="budget-list-container"></div>
+      <div class="row2" style="margin:10px 0;">
+        <select id="b-cat"></select>
+        <input type="number" id="b-amt" placeholder="予算額" inputmode="numeric">
+      </div>
+      <button class="btn btn-secondary" onclick="setBudget()">予算を設定</button>
+      <div class="sec-title" style="margin-top:24px;">データ管理</div>
+      <button class="btn btn-secondary" style="color:var(--red);" onclick="if(confirm('全データを削除しますか？'))resetAll()">
+        <i class="ti ti-trash"></i> データを全削除
+      </button>
+    </div>
+
+  </div><!-- /pages -->
+
+  <div id="bottom-nav">
+    <button class="nav-btn active" onclick="goPage('home',this)"><i class="ti ti-home"></i>ホーム</button>
+    <button class="nav-btn" onclick="goPage('add',this)"><i class="ti ti-plus-circle"></i>追加</button>
+    <button class="nav-btn" onclick="goPage('assets',this)"><i class="ti ti-wallet"></i>資産</button>
+    <button class="nav-btn" onclick="goPage('graph',this)"><i class="ti ti-chart-pie"></i>グラフ</button>
+    <button class="nav-btn" onclick="goPage('settings',this)"><i class="ti ti-settings"></i>設定</button>
+  </div>
+</div>
+
+<script>
+// ========== STATE ==========
+let S;
+let curY=new Date().getFullYear(), curM=new Date().getMonth();
+let pieChart=null, barChart=null;
+
+function defaultState(){
+  return {
+    assets:[
+      {id:1,name:'財布',type:'wallet',balance:30000},
+      {id:2,name:'メインバンク',type:'bank',balance:500000},
+      {id:3,name:'楽天カード',type:'credit',balance:0,closeDay:15,payDay:27,linkedAssetId:2}
+    ],
+    categories:['食費','交通費','住居費','光熱費','娯楽','医療','衣類','その他'],
+    budgets:{食費:30000,交通費:10000,娯楽:15000},
+    transactions:[],
+    nextId:100
+  };
+}
+
+function loadState(){
+  try{const d=localStorage.getItem('kakeibo_pwa');return d?JSON.parse(d):null;}catch(e){return null;}
+}
+function saveState(){try{localStorage.setItem('kakeibo_pwa',JSON.stringify(S));}catch(e){}}
+
+S=loadState();
+if(!S){
+  S=defaultState();
+  const y=new Date().getFullYear(), m=new Date().getMonth();
+  const pm=String(m+1).padStart(2,'0');
+  [
+    {id:1,date:`${y}-${pm}-01`,type:'income',cat:'給与',amount:300000,assetId:2,note:'月給'},
+    {id:2,date:`${y}-${pm}-03`,type:'expense',cat:'食費',amount:5400,assetId:3,note:'スーパー'},
+    {id:3,date:`${y}-${pm}-05`,type:'expense',cat:'娯楽',amount:3200,assetId:3,note:'映画'},
+    {id:4,date:`${y}-${pm}-10`,type:'expense',cat:'住居費',amount:80000,assetId:2,note:'家賃'},
+    {id:5,date:`${y}-${pm}-12`,type:'expense',cat:'食費',amount:8800,assetId:1,note:'コンビニ'},
+    {id:6,date:`${y}-${pm}-15`,type:'expense',cat:'交通費',amount:5000,assetId:2,note:'定期券'},
+  ].forEach(t=>S.transactions.push(t));
+  S.nextId=10;
+  saveState();
+}
+
+// ========== HELPERS ==========
+const fmt=n=>'¥'+(Math.round(n)||0).toLocaleString('ja-JP');
+const byId=id=>S.assets.find(a=>a.id===id);
+const COLORS=['#1D9E75','#378ADD','#D85A30','#D4537E','#BA7517','#534AB7','#639922','#E24B4A','#888','#0F6E56'];
+const TYPE_LABEL={wallet:'財布',bank:'銀行口座',ic:'交通系IC',credit:'クレカ',other:'その他'};
+
+function monthTx(y,m){
+  return S.transactions.filter(t=>{const d=new Date(t.date);return d.getFullYear()===y&&d.getMonth()===m;});
+}
+function cardPendingTotal(card){
+  return S.transactions.filter(t=>t.assetId===card.id&&t.type==='expense'&&!t.settled).reduce((s,t)=>s+t.amount,0);
+}
+function cardMonthTotal(card,y,m){
+  return S.transactions.filter(t=>{
+    if(t.assetId!==card.id||t.type!=='expense') return false;
+    const d=new Date(t.date);
+    return d.getFullYear()===y&&d.getMonth()===m&&d.getDate()<=card.closeDay;
+  }).reduce((s,t)=>s+t.amount,0);
+}
+
+// ========== NAVIGATION ==========
+function goPage(name,btn){
+  document.querySelectorAll('.page').forEach(p=>p.classList.remove('active'));
+  document.querySelectorAll('.nav-btn').forEach(b=>b.classList.remove('active'));
+  document.getElementById('page-'+name).classList.add('active');
+  if(btn)btn.classList.add('active');
+  renderPage(name);
+}
+function renderPage(name){
+  if(name==='home')renderHome();
+  if(name==='add')renderAddForm();
+  if(name==='assets')renderAssets();
+  if(name==='graph')renderGraph();
+  if(name==='settings')renderSettings();
+}
+
+// ========== HOME ==========
+function renderHome(){
+  document.getElementById('mlabel').textContent=curY+'年'+(curM+1)+'月';
+  const txs=monthTx(curY,curM);
+  const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const bal=inc-exp;
+  document.getElementById('h-inc').textContent=fmt(inc);
+  document.getElementById('h-exp').textContent=fmt(exp);
+  const be=document.getElementById('h-bal');
+  be.textContent=fmt(bal);
+  be.className='mval '+(bal>=0?'pos':'neg');
+
+  document.getElementById('home-assets').innerHTML=S.assets.map(a=>{
+    const isCard=a.type==='credit';
+    const val=isCard?cardPendingTotal(a):a.balance;
+    return `<div class="asset-card${isCard?' credit':''}">
+      <div class="atype">${TYPE_LABEL[a.type]||a.type}</div>
+      <div class="aname">${a.name}</div>
+      <div class="abal" style="color:${isCard?'var(--amber)':'#1a1a1a'}">${fmt(val)}</div>
+      ${isCard?'<div class="apending">未払い計上額</div>':''}
+    </div>`;
+  }).join('');
+
+  const sorted=[...txs].sort((a,b)=>b.date.localeCompare(a.date));
+  const el=document.getElementById('home-tx-list');
+  if(!sorted.length){el.innerHTML='<div class="empty">この月の取引はありません</div>';return;}
+  el.innerHTML='<div class="tx-list">'+sorted.map(t=>{
+    const asset=byId(t.assetId);
+    const isCard=asset&&asset.type==='credit';
+    const isPending=isCard&&!t.settled&&t.type==='expense';
+    const badge=isPending?'<span class="badge pending">未払</span>':t.settled?'<span class="badge settled">支払済</span>':'';
+    return `<div class="tx-item">
+      <div class="tx-left">
+        <div class="tx-name">${t.note||t.cat||'振替'}${badge}</div>
+        <div class="tx-sub">${t.cat||'振替'} · ${asset?asset.name:'—'} · ${t.date}</div>
+      </div>
+      <div class="tx-right">
+        <span class="tx-amt ${t.type==='income'?'inc':isPending?'pending':'exp'}">${t.type==='income'?'+':'-'}${fmt(t.amount)}</span>
+        <button class="del-btn" onclick="delTx(${t.id})"><i class="ti ti-x"></i></button>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+function delTx(id){
+  if(!confirm('この取引を削除しますか？'))return;
+  const t=S.transactions.find(x=>x.id===id);
+  if(!t)return;
+  const a=byId(t.assetId);
+  if(t.type==='income'&&a&&a.type!=='credit')a.balance-=t.amount;
+  if(t.type==='expense'&&a&&a.type!=='credit')a.balance+=t.amount;
+  if(t.type==='transfer'){const fa=byId(t.assetId);const ta=byId(t.toAssetId);if(fa)fa.balance+=t.amount;if(ta)ta.balance-=t.amount;}
+  S.transactions=S.transactions.filter(x=>x.id!==id);
+  saveState();renderHome();
+}
+
+function chMonth(d){
+  curM+=d;
+  if(curM>11){curM=0;curY++;}
+  if(curM<0){curM=11;curY--;}
+  const active=document.querySelector('.page.active');
+  if(active)renderPage(active.id.replace('page-',''));
+}
+
+// ========== ADD FORM ==========
+function renderAddForm(){
+  document.getElementById('a-cat').innerHTML=S.categories.map(c=>`<option>${c}</option>`).join('');
+  refreshAssetSelects();
+  document.getElementById('a-date').value=new Date().toISOString().split('T')[0];
+  onTypeChange();
+}
+function refreshAssetSelects(){
+  const all=S.assets,nonCard=S.assets.filter(a=>a.type!=='credit');
+  const opt=a=>`<option value="${a.id}">${a.name}</option>`;
+  document.getElementById('a-asset').innerHTML=all.map(opt).join('');
+  document.getElementById('a-to-asset').innerHTML=all.map(opt).join('');
+  document.getElementById('na-linked').innerHTML=nonCard.map(opt).join('');
+}
+function onTypeChange(){
+  const type=document.getElementById('a-type').value;
+  document.getElementById('fg-cat').style.display=type==='transfer'?'none':'';
+  document.getElementById('fg-to-asset').style.display=type==='transfer'?'':'none';
+  document.getElementById('asset-label').textContent=type==='income'?'入金先':type==='transfer'?'振替元':'支払い元';
+  onAssetChange();
+}
+function onAssetChange(){
+  const asset=byId(parseInt(document.getElementById('a-asset').value));
+  const type=document.getElementById('a-type').value;
+  const box=document.getElementById('fg-card-note');
+  if(asset&&asset.type==='credit'&&type==='expense'){
+    box.style.display='';
+    document.getElementById('card-note-text').textContent=`${asset.name}：締め日${asset.closeDay}日 / 翌月${asset.payDay}日払い。未払いとして計上されます。`;
+  } else {
+    box.style.display='none';
+  }
+}
+function addTx(){
+  const type=document.getElementById('a-type').value;
+  const date=document.getElementById('a-date').value;
+  const cat=document.getElementById('a-cat').value;
+  const amount=parseFloat(document.getElementById('a-amount').value);
+  const assetId=parseInt(document.getElementById('a-asset').value);
+  const toAssetId=parseInt(document.getElementById('a-to-asset').value);
+  const note=document.getElementById('a-note').value.trim();
+  if(!date||!amount||amount<=0){alert('日付と金額を入力してください');return;}
+  const asset=byId(assetId);
+  const tx={id:S.nextId++,date,type,cat,amount,assetId,note};
+  if(type==='transfer')tx.toAssetId=toAssetId;
+  if(type==='income'&&asset&&asset.type!=='credit')asset.balance+=amount;
+  if(type==='expense'&&asset&&asset.type!=='credit')asset.balance-=amount;
+  if(type==='transfer'){const ta=byId(toAssetId);if(asset)asset.balance-=amount;if(ta)ta.balance+=amount;}
+  S.transactions.push(tx);
+  saveState();
+  document.getElementById('a-amount').value='';
+  document.getElementById('a-note').value='';
+  alert('追加しました！');
+  goPage('home',document.querySelector('.nav-btn'));
+}
+
+// ========== ASSETS ==========
+function assetsTab(t,btn){
+  ['list','card','add'].forEach(n=>document.getElementById('at-'+n).style.display=n===t?'':'none');
+  document.querySelectorAll('.inner-tab').forEach(b=>b.classList.remove('active'));
+  if(btn)btn.classList.add('active');
+  if(t==='card')renderCardSummary();
+  if(t==='list')renderAssetsList();
+}
+function renderAssets(){renderAssetsList();refreshAssetSelects();}
+function renderAssetsList(){
+  const c=document.getElementById('assets-list-container');
+  if(!S.assets.length){c.innerHTML='<div class="empty">資産がありません</div>';return;}
+  c.innerHTML='<div class="tx-list">'+S.assets.map(a=>{
+    const isCard=a.type==='credit';
+    const linked=isCard&&a.linkedAssetId?byId(a.linkedAssetId):null;
+    const pending=isCard?cardPendingTotal(a):0;
+    return `<div class="tx-item">
+      <div class="tx-left">
+        <div class="tx-name">${a.name} <span class="tag">${TYPE_LABEL[a.type]||a.type}</span></div>
+        <div class="tx-sub">${isCard?`締め${a.closeDay}日 / 翌月${a.payDay}日 / ${linked?linked.name:'引落未設定'}`:fmt(a.balance)}</div>
+        ${isCard?`<div style="font-size:12px;color:var(--amber);margin-top:2px;">未払: ${fmt(pending)}</div>`:''}
+      </div>
+      <button class="del-btn" onclick="delAsset(${a.id})"><i class="ti ti-trash"></i></button>
+    </div>`;
+  }).join('')+'</div>';
+}
+function renderCardSummary(){
+  const cards=S.assets.filter(a=>a.type==='credit');
+  const c=document.getElementById('card-summary-container');
+  if(!cards.length){c.innerHTML='<div class="empty">カードが登録されていません</div>';return;}
+  c.innerHTML=cards.map(card=>{
+    const pending=cardPendingTotal(card);
+    const thisMonth=cardMonthTotal(card,curY,curM);
+    const linked=card.linkedAssetId?byId(card.linkedAssetId):null;
+    return `<div class="card-summary-item">
+      <div class="cs-name"><i class="ti ti-credit-card"></i>${card.name}</div>
+      <div class="cs-row"><span>締め日</span><span class="val">毎月${card.closeDay}日</span></div>
+      <div class="cs-row"><span>支払日</span><span class="val">翌月${card.payDay}日</span></div>
+      <div class="cs-row"><span>引落口座</span><span class="val">${linked?linked.name:'未設定'}</span></div>
+      <div class="cs-row"><span>${curM+1}月締め分</span><span class="val">${fmt(thisMonth)}</span></div>
+      <div class="cs-row"><span>未払い計上合計</span><span class="val amber">${fmt(pending)}</span></div>
+      ${linked&&pending>0?`<button class="pay-btn" onclick="payCard(${card.id})">
+        ${linked.name}から ${fmt(pending)} を引き落とす
+      </button>`:''}
+    </div>`;
+  }).join('');
+}
+function payCard(cardId){
+  const card=byId(cardId);
+  const linked=card.linkedAssetId?byId(card.linkedAssetId):null;
+  const pending=cardPendingTotal(card);
+  if(!linked){alert('引落口座が設定されていません');return;}
+  if(!confirm(`${linked.name}から${fmt(pending)}を引き落とします。よろしいですか？`))return;
+  S.transactions.filter(t=>t.assetId===cardId&&t.type==='expense'&&!t.settled).forEach(t=>t.settled=true);
+  linked.balance-=pending;
+  S.transactions.push({id:S.nextId++,date:new Date().toISOString().split('T')[0],type:'expense',cat:'カード引落',amount:pending,assetId:linked.id,note:`${card.name}引落`,isCardPayment:true});
+  saveState();
+  alert('引き落とし処理が完了しました');
+  renderCardSummary();renderAssetsList();
+}
+function delAsset(id){
+  if(!confirm('この資産を削除しますか？'))return;
+  S.assets=S.assets.filter(a=>a.id!==id);
+  saveState();renderAssets();
+}
+function onNewAssetType(){
+  const t=document.getElementById('na-type').value;
+  document.getElementById('na-credit-opts').style.display=t==='credit'?'':'none';
+  document.getElementById('na-balance-wrap').style.display=t==='credit'?'none':'';
+}
+function addAsset(){
+  const name=document.getElementById('na-name').value.trim();
+  const type=document.getElementById('na-type').value;
+  if(!name){alert('名前を入力してください');return;}
+  const asset={id:S.nextId++,name,type};
+  if(type!=='credit'){asset.balance=parseFloat(document.getElementById('na-balance').value)||0;}
+  else{asset.balance=0;asset.closeDay=parseInt(document.getElementById('na-close').value)||15;asset.payDay=parseInt(document.getElementById('na-pay').value)||27;asset.linkedAssetId=parseInt(document.getElementById('na-linked').value)||null;}
+  S.assets.push(asset);saveState();
+  document.getElementById('na-name').value='';
+  document.getElementById('na-balance').value='';
+  alert('追加しました');assetsTab('list',document.querySelector('.inner-tab'));
+}
+
+// ========== GRAPH ==========
+function renderGraph(){
+  document.getElementById('g-mlabel').textContent=curY+'年'+(curM+1)+'月';
+  const txs=monthTx(curY,curM).filter(t=>t.type==='expense'&&!t.isCardPayment);
+  const catMap={};
+  txs.forEach(t=>{catMap[t.cat]=(catMap[t.cat]||0)+t.amount;});
+  const labels=Object.keys(catMap),data=Object.values(catMap);
+  const colors=labels.map((_,i)=>COLORS[i%COLORS.length]);
+  document.getElementById('pie-legend').innerHTML=labels.map((l,i)=>
+    `<span class="legend-item"><span class="legend-dot" style="background:${colors[i]}"></span>${l} ${fmt(catMap[l])}</span>`
+  ).join('');
+  if(pieChart)pieChart.destroy();
+  if(labels.length){
+    pieChart=new Chart(document.getElementById('pieChart'),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:'#f5f5f5'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
+  }
+  const months=[];
+  for(let i=5;i>=0;i--){let mo=curM-i,yr=curY;if(mo<0){mo+=12;yr--;}months.push({label:(mo+1)+'月',y:yr,m:mo});}
+  const incArr=months.map(mo=>S.transactions.filter(t=>{const d=new Date(t.date);return d.getFullYear()===mo.y&&d.getMonth()===mo.m&&t.type==='income';}).reduce((s,t)=>s+t.amount,0));
+  const expArr=months.map(mo=>S.transactions.filter(t=>{const d=new Date(t.date);return d.getFullYear()===mo.y&&d.getMonth()===mo.m&&t.type==='expense';}).reduce((s,t)=>s+t.amount,0));
+  if(barChart)barChart.destroy();
+  barChart=new Chart(document.getElementById('barChart'),{type:'bar',data:{labels:months.map(m=>m.label),datasets:[{label:'収入',data:incArr,backgroundColor:'#1D9E75'},{label:'支出',data:expArr,backgroundColor:'#D85A30'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{autoSkip:false}},y:{ticks:{callback:v=>'¥'+Math.round(v).toLocaleString('ja-JP')}}}}});
+}
+
+// ========== SETTINGS ==========
+function renderSettings(){
+  document.getElementById('cat-list').innerHTML=S.categories.map(c=>`<span class="cat-pill">${c}<button onclick="delCat('${c}')">×</button></span>`).join('');
+  document.getElementById('b-cat').innerHTML=S.categories.map(c=>`<option>${c}</option>`).join('');
+  const bc=document.getElementById('budget-list-container');
+  const cats=Object.keys(S.budgets);
+  if(!cats.length){bc.innerHTML='<div class="empty">予算が設定されていません</div>';return;}
+  const txs=monthTx(curY,curM);
+  bc.innerHTML=cats.map(cat=>{
+    const spent=txs.filter(t=>t.type==='expense'&&t.cat===cat).reduce((s,t)=>s+t.amount,0);
+    const lim=S.budgets[cat];
+    const pct=Math.min(100,Math.round(spent/lim*100));
+    const col=pct>=100?'var(--red)':pct>=80?'var(--amber)':'var(--green)';
+    return `<div class="budget-item">
+      <div class="budget-hd"><span class="bcat">${cat}</span><span class="bamt">${fmt(spent)} / ${fmt(lim)}</span></div>
+      <div class="bbar-wrap"><div class="bbar" style="width:${pct}%;background:${col};"></div></div>
+    </div>`;
+  }).join('');
+}
+function addCat(){const v=document.getElementById('new-cat').value.trim();if(!v)return;if(!S.categories.includes(v)){S.categories.push(v);saveState();}document.getElementById('new-cat').value='';renderSettings();}
+function delCat(c){S.categories=S.categories.filter(x=>x!==c);delete S.budgets[c];saveState();renderSettings();}
+function setBudget(){const cat=document.getElementById('b-cat').value;const amt=parseFloat(document.getElementById('b-amt').value);if(!amt||amt<=0)return;S.budgets[cat]=amt;saveState();document.getElementById('b-amt').value='';renderSettings();}
+function resetAll(){localStorage.removeItem('kakeibo_pwa');S=defaultState();saveState();renderHome();}
+
+renderHome();
+</script>
+</body>
+</html>
