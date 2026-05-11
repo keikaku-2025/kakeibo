@@ -161,7 +161,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="sec-title">資産</div>
       <div id="home-assets"></div>
       <div class="sec-title">今月の取引</div>
-      <div id="home-tx-list"></div>
+      <div id="home-cal-grid"></div>
+      <div id="home-cal-detail"></div>
     </div>
 
     <!-- ADD -->
@@ -251,22 +252,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
     </div>
 
-    <!-- CALENDAR -->
-    <div class="page" id="page-calendar">
-      <div class="month-nav">
-        <button onclick="chMonth(-1)">‹</button>
-        <span class="month-label" id="cal-mlabel"></span>
-        <button onclick="chMonth(1)">›</button>
-      </div>
-      <div class="metrics">
-        <div class="metric"><div class="mlabel">収入</div><div class="mval inc" id="cal-inc">¥0</div></div>
-        <div class="metric"><div class="mlabel">支出</div><div class="mval exp" id="cal-exp">¥0</div></div>
-        <div class="metric"><div class="mlabel">収支</div><div class="mval" id="cal-bal">¥0</div></div>
-      </div>
-      <div id="cal-grid-wrap"></div>
-      <div id="cal-detail"></div>
-    </div>
-
     <!-- SETTINGS -->
     <div class="page" id="page-settings">
       <div class="page-title">設定</div>
@@ -297,8 +282,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="nav-btn active" onclick="goPage('home',this)"><i class="ti ti-home"></i>ホーム</button>
     <button class="nav-btn" onclick="goPage('add',this)"><i class="ti ti-plus-circle"></i>追加</button>
     <button class="nav-btn" onclick="goPage('assets',this)"><i class="ti ti-wallet"></i>資産</button>
-    <button class="nav-btn" onclick="goPage('calendar',this)"><i class="ti ti-calendar"></i>カレンダー</button>
     <button class="nav-btn" onclick="goPage('graph',this)"><i class="ti ti-chart-pie"></i>グラフ</button>
+    <button class="nav-btn" onclick="goPage('settings',this)"><i class="ti ti-settings"></i>設定</button>
   </div>
 </div>
 
@@ -454,7 +439,6 @@ function renderPage(name){
   if(name==='add')renderAddForm();
   if(name==='assets')renderAssets();
   if(name==='graph')renderGraphTab();
-  if(name==='calendar')renderCalendar();
   if(name==='settings')renderSettings();
 }
 function chMonth(d){curM+=d;if(curM>11){curM=0;curY++;}if(curM<0){curM=11;curY--;}calSelectedDate=null;const active=document.querySelector('.page.active');if(active)renderPage(active.id.replace('page-',''));}
@@ -469,7 +453,7 @@ function renderHome(){
   document.getElementById('h-exp').textContent=fmt(exp);
   const be=document.getElementById('h-bal');be.textContent=fmt(inc-exp);be.className='mval '+((inc-exp)>=0?'pos':'neg');
 
-  // 資産グループ（ホーム：残高表示のみ）
+  // 資産グループ
   const ag=document.getElementById('home-assets');
   let html='';
   GROUP_ORDER.forEach(type=>{
@@ -485,10 +469,8 @@ function renderHome(){
   });
   ag.innerHTML=html;
 
-  const sorted=[...txs].sort((a,b)=>b.date.localeCompare(a.date));
-  const el=document.getElementById('home-tx-list');
-  if(!sorted.length){el.innerHTML='<div class="empty">この月の取引はありません</div>';return;}
-  el.innerHTML='<div class="tx-list">'+sorted.map(t=>txItemHtml(t)).join('')+'</div>';
+  // カレンダー描画
+  renderHomeCalendar(txs);
 }
 
 function txItemHtml(t){
@@ -748,18 +730,17 @@ function addAsset(){
   alert('追加しました');assetsTab('list',document.querySelector('#page-assets .inner-tab'));
 }
 
-// ========== CALENDAR ==========
-function renderCalendar(){
-  document.getElementById('cal-mlabel').textContent=curY+'年'+(curM+1)+'月';
-  const txs=monthTx(curY,curM);
-  const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-  const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  document.getElementById('cal-inc').textContent=fmt(inc);
-  document.getElementById('cal-exp').textContent=fmt(exp);
-  const cb=document.getElementById('cal-bal');cb.textContent=fmt(inc-exp);cb.className='mval '+((inc-exp)>=0?'pos':'neg');
+// ========== HOME CALENDAR ==========
+function renderHomeCalendar(txs){
+  if(!txs)txs=monthTx(curY,curM);
+  const todayStr=new Date().toISOString().split('T')[0];
+  // 初期選択：今月の今日、なければその月の最終日
+  if(!calSelectedDate){
+    const isThisMonth=curY===new Date().getFullYear()&&curM===new Date().getMonth();
+    calSelectedDate=isThisMonth?todayStr:`${curY}-${String(curM+1).padStart(2,'0')}-${new Date(curY,curM+1,0).getDate()}`;
+  }
   const firstDay=new Date(curY,curM,1).getDay();
   const daysInMonth=new Date(curY,curM+1,0).getDate();
-  const todayStr=new Date().toISOString().split('T')[0];
   const dayMap={};
   txs.forEach(t=>{const day=parseInt(t.date.split('-')[2]);if(!dayMap[day])dayMap[day]=[];dayMap[day].push(t);});
   let html='<div class="cal-grid">';
@@ -773,14 +754,23 @@ function renderCalendar(){
     html+=`<div class="cal-cell${isToday?' today':''}${isSelected?' selected':''}" onclick="selectCalDay('${dateStr}')"><div class="cal-num">${d}</div><div class="cal-dots">${dots}</div></div>`;
   }
   html+='</div>';
-  document.getElementById('cal-grid-wrap').innerHTML=html;
-  renderCalDetail();
+  document.getElementById('home-cal-grid').innerHTML=html;
+  renderHomeCalDetail();
 }
-function selectCalDay(dateStr){calSelectedDate=calSelectedDate===dateStr?null:dateStr;renderCalendar();}
-function renderCalDetail(){
-  const el=document.getElementById('cal-detail');if(!calSelectedDate){el.innerHTML='';return;}
-  const dayTxs=S.transactions.filter(t=>t.date===calSelectedDate);
-  if(!dayTxs.length){el.innerHTML=`<div class="cal-day-detail"><div class="cal-day-detail-header">${calSelectedDate} — 取引なし</div></div>`;return;}
+
+function selectCalDay(dateStr){
+  calSelectedDate=calSelectedDate===dateStr?null:dateStr;
+  renderHomeCalendar();
+}
+
+function renderHomeCalDetail(){
+  const el=document.getElementById('home-cal-detail');
+  if(!calSelectedDate){el.innerHTML='';return;}
+  const dayTxs=S.transactions.filter(t=>t.date===calSelectedDate).sort((a,b)=>a.id-b.id);
+  if(!dayTxs.length){
+    el.innerHTML=`<div class="cal-day-detail"><div class="cal-day-detail-header">${calSelectedDate} — 取引なし</div></div>`;
+    return;
+  }
   el.innerHTML=`<div class="cal-day-detail"><div class="cal-day-detail-header">${calSelectedDate}（${dayTxs.length}件）</div><div class="tx-list">${dayTxs.map(t=>txItemHtml(t)).join('')}</div></div>`;
 }
 
