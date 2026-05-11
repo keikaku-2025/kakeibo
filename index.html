@@ -15,46 +15,18 @@
 html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSystemFont,'Hiragino Sans','Hiragino Kaku Gothic ProN','Noto Sans JP',sans-serif;color:#1a1a1a;}
 :root{
   --nav-h:50px;
-  --safe-top:env(safe-area-inset-top, 0px);
-  --safe-bottom:env(safe-area-inset-bottom, 0px);
-  --safe-left:env(safe-area-inset-left, 0px);
-  --safe-right:env(safe-area-inset-right, 0px);
+  --safe-top:env(safe-area-inset-top,0px);
+  --safe-bottom:env(safe-area-inset-bottom,0px);
   --green:#1D9E75;--red:#D85A30;--amber:#BA7517;--purple:#534AB7;--blue:#378ADD;--teal:#0E9F9F;
   --border:#e5e5e5;--muted:#888;--radius:12px;
 }
-#app{
-  max-width:430px;margin:0 auto;height:100vh;
-  display:flex;flex-direction:column;background:#f5f5f5;
-  /* iPhoneのノッチ/Dynamic Island対応 */
-  padding-top:var(--safe-top);
-}
-/* ボトムナビ：safe-areaを内側にpaddingで吸収 */
-#bottom-nav{
-  position:fixed;bottom:0;left:50%;transform:translateX(-50%);
-  width:100%;max-width:430px;
-  background:#fff;border-top:1px solid var(--border);
-  display:flex;
-  /* ナビの高さ + iPhoneホームインジケーター分を下にpadding */
-  padding-bottom:var(--safe-bottom);
-  z-index:200;
-}
-.nav-btn{
-  flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;
-  gap:2px;background:none;border:none;cursor:pointer;font-size:10px;color:var(--muted);
-  height:var(--nav-h);/* ボタン自体の高さは固定 */
-  padding:0;
-}
+#app{max-width:430px;margin:0 auto;height:100vh;display:flex;flex-direction:column;background:#f5f5f5;padding-top:var(--safe-top);}
+#bottom-nav{position:fixed;bottom:0;left:50%;transform:translateX(-50%);width:100%;max-width:430px;background:#fff;border-top:1px solid var(--border);display:flex;padding-bottom:var(--safe-bottom);z-index:200;}
+.nav-btn{flex:1;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;background:none;border:none;cursor:pointer;font-size:10px;color:var(--muted);height:var(--nav-h);padding:0;}
 .nav-btn.active{color:#1a1a1a;}
 .nav-btn i{font-size:22px;}
 #pages{flex:1;overflow:hidden;position:relative;}
-.page{
-  position:absolute;inset:0;overflow-y:auto;
-  /* 下：ナビ高さ + safe-area分の余白 */
-  padding:14px 14px calc(var(--nav-h) + var(--safe-bottom) + 20px);
-  display:none;
-  /* iOSのバウンススクロールを自然に */
-  -webkit-overflow-scrolling:touch;
-}
+.page{position:absolute;inset:0;overflow-y:auto;padding:14px 14px calc(var(--nav-h) + var(--safe-bottom) + 20px);display:none;-webkit-overflow-scrolling:touch;}
 .page.active{display:block;}
 .page-title{font-size:18px;font-weight:600;margin-bottom:14px;}
 .month-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px;}
@@ -65,6 +37,7 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 .metric .mlabel{font-size:10px;color:var(--muted);margin-bottom:3px;}
 .metric .mval{font-size:16px;font-weight:700;}
 .mval.inc,.mval.pos{color:var(--green);}.mval.exp,.mval.neg{color:var(--red);}
+/* 資産グループ */
 .asset-group{margin-bottom:10px;}
 .asset-group-label{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px;letter-spacing:.4px;}
 .asset-row-list{background:#fff;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;}
@@ -73,6 +46,9 @@ html,body{height:100%;background:#f5f5f5;font-family:-apple-system,BlinkMacSyste
 .asset-row .aname{font-size:14px;font-weight:500;}
 .asset-row .abal{font-size:15px;font-weight:700;}
 .asset-row .apending{font-size:11px;color:var(--amber);}
+/* 資産一覧（編集ボタン付き） */
+.asset-group-edit{margin-bottom:12px;}
+.asset-group-edit .asset-group-label{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px;letter-spacing:.4px;}
 .sec-title{font-size:12px;font-weight:600;color:var(--muted);margin:12px 0 7px;letter-spacing:.3px;}
 .tx-list{background:#fff;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;}
 .tx-item{display:flex;align-items:center;justify-content:space-between;padding:11px 13px;border-bottom:1px solid var(--border);}
@@ -98,6 +74,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .btn-primary{background:#1a1a1a;color:#fff;}
 .btn-secondary{background:#fff;color:#1a1a1a;border:1px solid var(--border);margin-top:8px;}
 .btn-danger{background:#fff;color:var(--red);border:1px solid var(--border);margin-top:8px;}
+.btn-sm{padding:7px 14px;font-size:13px;border-radius:8px;width:auto;}
 .row2{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
 .inner-tabs{display:flex;background:#fff;border-radius:10px;border:1px solid var(--border);padding:3px;gap:3px;margin-bottom:12px;}
 .inner-tab{flex:1;background:none;border:none;padding:7px 2px;font-size:12px;font-weight:500;color:var(--muted);cursor:pointer;border-radius:7px;}
@@ -121,9 +98,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .legend-item{display:flex;align-items:center;gap:3px;font-size:11px;color:var(--muted);}
 .legend-dot{width:9px;height:9px;border-radius:2px;flex-shrink:0;}
 .empty{text-align:center;color:var(--muted);padding:28px 14px;font-size:13px;}
-.cat-pills{display:flex;flex-wrap:wrap;gap:5px;margin-bottom:9px;}
-.cat-pill{display:inline-flex;align-items:center;gap:3px;background:#f0f0f0;border-radius:20px;padding:3px 9px;font-size:12px;}
-.cat-pill button{background:none;border:none;cursor:pointer;color:var(--muted);font-size:13px;line-height:1;padding:0 0 0 2px;}
+/* カテゴリ管理 */
+.cat-item{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;border-bottom:1px solid var(--border);background:#fff;}
+.cat-item:last-child{border-bottom:none;}
+.cat-item-name{font-size:14px;font-weight:500;}
+.cat-item-actions{display:flex;gap:4px;}
 .range-nav{display:flex;align-items:center;justify-content:space-between;margin-bottom:9px;}
 .range-nav span{font-size:12px;color:var(--muted);}
 .range-nav button{background:#fff;border:1px solid var(--border);border-radius:7px;padding:4px 11px;font-size:12px;cursor:pointer;}
@@ -137,7 +116,7 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .cal-grid{display:grid;grid-template-columns:repeat(7,1fr);gap:2px;margin-bottom:10px;}
 .cal-day-label{text-align:center;font-size:10px;color:var(--muted);padding:4px 0;font-weight:600;}
 .cal-day-label.sun{color:var(--red);}.cal-day-label.sat{color:var(--blue);}
-.cal-cell{background:#fff;border-radius:8px;border:1px solid var(--border);min-height:50px;padding:3px;cursor:pointer;position:relative;}
+.cal-cell{background:#fff;border-radius:8px;border:1px solid var(--border);min-height:50px;padding:3px;cursor:pointer;}
 .cal-cell.empty{background:transparent;border-color:transparent;cursor:default;}
 .cal-cell.today{border-color:#1a1a1a;border-width:2px;}
 .cal-cell.selected{background:#1a1a1a;}
@@ -149,16 +128,18 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .cal-day-detail-header{padding:10px 13px;font-size:13px;font-weight:600;background:#fafafa;border-bottom:1px solid var(--border);}
 /* モーダル */
 .modal-overlay{position:fixed;inset:0;background:rgba(0,0,0,.45);z-index:500;display:flex;align-items:flex-end;justify-content:center;}
-.modal-box{
-  background:#fff;border-radius:20px 20px 0 0;
-  padding:22px 18px;
-  /* モーダル内もsafe-area対応 */
-  padding-bottom:calc(22px + var(--safe-bottom));
-  width:100%;max-width:430px;max-height:88vh;overflow-y:auto;
-}
+.modal-box{background:#fff;border-radius:20px 20px 0 0;padding:22px 18px;padding-bottom:calc(22px + var(--safe-bottom));width:100%;max-width:430px;max-height:88vh;overflow-y:auto;}
 .modal-title{font-size:16px;font-weight:600;margin-bottom:18px;}
 .modal-actions{display:flex;gap:8px;margin-top:6px;}
 .modal-actions .btn{flex:1;margin:0;}
+/* カテゴリ一覧（設定画面） */
+.cat-item{display:flex;align-items:center;justify-content:space-between;padding:10px 13px;border-bottom:1px solid var(--border);}
+.cat-item:last-child{border-bottom:none;}
+.cat-item-name{font-size:14px;font-weight:500;}
+.cat-item-actions{display:flex;gap:4px;}
+/* 資産一覧グループ（資産タブ） */
+.asset-group-edit{margin-bottom:12px;}
+.asset-group-edit .asset-group-label{font-size:11px;font-weight:600;color:var(--muted);margin-bottom:6px;letter-spacing:.4px;}
 </style>
 </head>
 <body>
@@ -289,13 +270,24 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <!-- SETTINGS -->
     <div class="page" id="page-settings">
       <div class="page-title">設定</div>
+
+      <!-- カテゴリ管理 -->
       <div class="sec-title">支出カテゴリ</div>
-      <div class="cat-pills" id="cat-list"></div>
-      <div class="row2" style="margin-bottom:14px;"><input type="text" id="new-cat" placeholder="新しいカテゴリ"><button class="btn btn-secondary" style="margin:0;padding:11px;" onclick="addCat()">追加</button></div>
+      <div class="tx-list" style="margin-bottom:10px;">
+        <div id="cat-list"></div>
+      </div>
+      <!-- 新規追加 -->
+      <div class="row2" style="margin-bottom:16px;">
+        <input type="text" id="new-cat" placeholder="新しいカテゴリ名">
+        <button class="btn btn-secondary" style="margin:0;padding:11px;" onclick="addCat()">追加</button>
+      </div>
+
+      <!-- 予算 -->
       <div class="sec-title">予算設定</div>
       <div id="budget-list-container"></div>
       <div class="row2" style="margin:9px 0;"><select id="b-cat"></select><input type="number" id="b-amt" placeholder="予算額" inputmode="numeric"></div>
       <button class="btn btn-secondary" onclick="setBudget()">予算を設定</button>
+
       <div class="sec-title" style="margin-top:22px;">データ管理</div>
       <button class="btn btn-danger" onclick="if(confirm('全データを削除しますか？'))resetAll()"><i class="ti ti-trash"></i> データを全削除</button>
     </div>
@@ -340,6 +332,18 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 </div>
 
+<!-- カテゴリ編集モーダル -->
+<div class="modal-overlay" id="modal-edit-cat" style="display:none;" onclick="closeModal('modal-edit-cat')">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-title">カテゴリを編集</div>
+    <div class="form-group"><label>カテゴリ名</label><input type="text" id="edit-cat-name"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-edit-cat')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveEditCat()">保存する</button>
+    </div>
+  </div>
+</div>
+
 <!-- 取引編集モーダル -->
 <div class="modal-overlay" id="modal-edit-tx" style="display:none;" onclick="closeModal('modal-edit-tx')">
   <div class="modal-box" onclick="event.stopPropagation()">
@@ -356,9 +360,21 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 </div>
 
+<!-- カテゴリ名前変更モーダル -->
+<div class="modal-overlay" id="modal-edit-cat" style="display:none;" onclick="closeModal('modal-edit-cat')">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-title">カテゴリ名を変更</div>
+    <div class="form-group"><label>カテゴリ名</label><input type="text" id="edit-cat-name"></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-edit-cat')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveEditCat()">保存する</button>
+    </div>
+  </div>
+</div>
+
 <script>
 // ========== STATE ==========
-let S, editingAssetId=null, editingTxId=null;
+let S, editingAssetId=null, editingTxId=null, editingCatOld=null;
 let curY=new Date().getFullYear(), curM=new Date().getMonth();
 let graphOffset=0, curGraphTab='cat';
 let calSelectedDate=null;
@@ -370,8 +386,6 @@ const TYPE_LABEL={wallet:'財布',bank:'銀行口座',ic:'交通系IC',credit:'�
 const TYPE_COLOR={wallet:'#BA7517',bank:'#378ADD',ic:'#1D9E75',credit:'#534AB7',qr:'#0E9F9F',other:'#888'};
 const GROUP_ORDER=['bank','credit','wallet','qr','ic','other'];
 const GROUP_LABEL={bank:'銀行口座',credit:'クレジットカード',wallet:'財布',qr:'コード決済',ic:'交通系IC',other:'その他'};
-
-// ストレージキー（PWA/ブラウザ共通）
 const STORAGE_KEY='kakeibo_v4';
 
 function defaultState(){
@@ -388,40 +402,21 @@ function defaultState(){
     nextId:100
   };
 }
-
 function loadState(){
-  // 旧キーからの移行も試みる
   const keys=[STORAGE_KEY,'kakeibo_pwa','kakeibo2'];
   for(const key of keys){
-    try{
-      const d=localStorage.getItem(key);
-      if(d){
-        const parsed=JSON.parse(d);
-        // 旧キーのデータを新キーにコピー
-        if(key!==STORAGE_KEY) localStorage.setItem(STORAGE_KEY,d);
-        return parsed;
-      }
-    }catch(e){}
+    try{const d=localStorage.getItem(key);if(d){const p=JSON.parse(d);if(key!==STORAGE_KEY)localStorage.setItem(STORAGE_KEY,d);return p;}}catch(e){}
   }
   return null;
 }
-
-function saveState(){
-  try{
-    const json=JSON.stringify(S);
-    localStorage.setItem(STORAGE_KEY,json);
-  }catch(e){
-    // StorageがfullならIndexedDBへのフォールバック（簡易）
-    console.warn('localStorage full:',e);
-  }
-}
+function saveState(){try{localStorage.setItem(STORAGE_KEY,JSON.stringify(S));}catch(e){}}
 
 S=loadState();
 if(!S){
   S=defaultState();
-  const y=new Date().getFullYear(), m=new Date().getMonth();
+  const y=new Date().getFullYear(),m=new Date().getMonth();
   const p=n=>String(n+1).padStart(2,'0');
-  const pm=m===0?11:m-1, py=m===0?y-1:y;
+  const pm=m===0?11:m-1,py=m===0?y-1:y;
   [
     {id:1,date:`${y}-${p(m)}-01`,type:'income',cat:'給与',amount:300000,assetId:2,note:'月給'},
     {id:2,date:`${y}-${p(m)}-03`,type:'expense',cat:'食費',amount:5400,assetId:3,note:'スーパー'},
@@ -440,43 +435,11 @@ if(!S){
 // ========== HELPERS ==========
 const fmt=n=>'¥'+(Math.round(n)||0).toLocaleString('ja-JP');
 const byId=id=>S.assets.find(a=>a.id===id);
-
-function monthTx(y,m){
-  return S.transactions.filter(t=>{const d=new Date(t.date);return d.getFullYear()===y&&d.getMonth()===m;});
-}
-function cardPendingTotal(card){
-  return S.transactions.filter(t=>(t.assetId===card.id&&t.type==='expense'||t.chargeCardId===card.id&&t.type==='charge')&&!t.settled).reduce((s,t)=>s+t.amount,0);
-}
-function cardMonthTotal(card,y,m){
-  return S.transactions.filter(t=>{
-    const isCard=(t.assetId===card.id&&t.type==='expense')||(t.chargeCardId===card.id&&t.type==='charge');
-    if(!isCard)return false;
-    const d=new Date(t.date);
-    return d.getFullYear()===y&&d.getMonth()===m&&d.getDate()<=card.closeDay;
-  }).reduce((s,t)=>s+t.amount,0);
-}
-function calcBankBalanceAt(bank,targetY,targetM){
-  let bal=bank.balance;
-  const now=new Date();let y=now.getFullYear(),m=now.getMonth();
-  while(y>targetY||(y===targetY&&m>targetM)){
-    S.transactions.filter(t=>{const d=new Date(t.date);return d.getFullYear()===y&&d.getMonth()===m;}).forEach(t=>{
-      if(t.type==='income'&&t.assetId===bank.id)bal-=t.amount;
-      if(t.type==='expense'&&t.assetId===bank.id)bal+=t.amount;
-      if(t.type==='transfer'){if(t.assetId===bank.id)bal+=t.amount;if(t.toAssetId===bank.id)bal-=t.amount;}
-    });
-    m--;if(m<0){m=11;y--;}
-  }
-  return bal;
-}
-function getMonthRange(count){
-  const months=[];
-  for(let i=count-1;i>=0;i--){
-    let mo=curM-i-(graphOffset*count),yr=curY;
-    while(mo<0){mo+=12;yr--;}while(mo>11){mo-=12;yr++;}
-    months.push({label:yr+'/'+(mo+1),y:yr,m:mo});
-  }
-  return months;
-}
+function monthTx(y,m){return S.transactions.filter(t=>{const d=new Date(t.date);return d.getFullYear()===y&&d.getMonth()===m;});}
+function cardPendingTotal(card){return S.transactions.filter(t=>((t.assetId===card.id&&t.type==='expense')||(t.chargeCardId===card.id&&t.type==='charge'))&&!t.settled).reduce((s,t)=>s+t.amount,0);}
+function cardMonthTotal(card,y,m){return S.transactions.filter(t=>{const ok=(t.assetId===card.id&&t.type==='expense')||(t.chargeCardId===card.id&&t.type==='charge');if(!ok)return false;const d=new Date(t.date);return d.getFullYear()===y&&d.getMonth()===m&&d.getDate()<=card.closeDay;}).reduce((s,t)=>s+t.amount,0);}
+function calcBankBalanceAt(bank,targetY,targetM){let bal=bank.balance;const now=new Date();let y=now.getFullYear(),m=now.getMonth();while(y>targetY||(y===targetY&&m>targetM)){S.transactions.filter(t=>{const d=new Date(t.date);return d.getFullYear()===y&&d.getMonth()===m;}).forEach(t=>{if(t.type==='income'&&t.assetId===bank.id)bal-=t.amount;if(t.type==='expense'&&t.assetId===bank.id)bal+=t.amount;if(t.type==='transfer'){if(t.assetId===bank.id)bal+=t.amount;if(t.toAssetId===bank.id)bal-=t.amount;}});m--;if(m<0){m=11;y--;}}return bal;}
+function getMonthRange(count){const months=[];for(let i=count-1;i>=0;i--){let mo=curM-i-(graphOffset*count),yr=curY;while(mo<0){mo+=12;yr--;}while(mo>11){mo-=12;yr++;}months.push({label:yr+'/'+(mo+1),y:yr,m:mo});}return months;}
 
 // ========== NAVIGATION ==========
 function goPage(name,btn){
@@ -494,12 +457,7 @@ function renderPage(name){
   if(name==='calendar')renderCalendar();
   if(name==='settings')renderSettings();
 }
-function chMonth(d){
-  curM+=d;if(curM>11){curM=0;curY++;}if(curM<0){curM=11;curY--;}
-  calSelectedDate=null;
-  const active=document.querySelector('.page.active');
-  if(active)renderPage(active.id.replace('page-',''));
-}
+function chMonth(d){curM+=d;if(curM>11){curM=0;curY++;}if(curM<0){curM=11;curY--;}calSelectedDate=null;const active=document.querySelector('.page.active');if(active)renderPage(active.id.replace('page-',''));}
 
 // ========== HOME ==========
 function renderHome(){
@@ -507,12 +465,11 @@ function renderHome(){
   const txs=monthTx(curY,curM);
   const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-  const bal=inc-exp;
   document.getElementById('h-inc').textContent=fmt(inc);
   document.getElementById('h-exp').textContent=fmt(exp);
-  const be=document.getElementById('h-bal');
-  be.textContent=fmt(bal);be.className='mval '+(bal>=0?'pos':'neg');
+  const be=document.getElementById('h-bal');be.textContent=fmt(inc-exp);be.className='mval '+((inc-exp)>=0?'pos':'neg');
 
+  // 資産グループ（ホーム：残高表示のみ）
   const ag=document.getElementById('home-assets');
   let html='';
   GROUP_ORDER.forEach(type=>{
@@ -522,10 +479,7 @@ function renderHome(){
     group.forEach(a=>{
       const isCard=a.type==='credit';
       const val=isCard?cardPendingTotal(a):a.balance;
-      html+=`<div class="asset-row">
-        <div><div class="aname">${a.name}</div>${isCard?'<div class="apending">未払い計上額</div>':''}</div>
-        <div class="abal" style="color:${isCard?'var(--amber)':'#1a1a1a'}">${fmt(val)}</div>
-      </div>`;
+      html+=`<div class="asset-row"><div><div class="aname">${a.name}</div>${isCard?'<div class="apending">未払い計上額</div>':''}</div><div class="abal" style="color:${isCard?'var(--amber)':'#1a1a1a'}">${fmt(val)}</div></div>`;
     });
     html+='</div></div>';
   });
@@ -549,14 +503,9 @@ function txItemHtml(t){
   else if(t.type==='transfer'){amtClass='transfer';prefix='⇄';}
   else if(isCharge){amtClass='charge';prefix='↑';}
   else if(isPending){amtClass='pending';}
-  const sub=isCharge
-    ?`チャージ · ${asset?asset.name:'—'}${chargeCard?' ('+chargeCard.name+'から)':''} · ${t.date}`
-    :`${t.cat||'振替'} · ${asset?asset.name:'—'} · ${t.date}`;
+  const sub=isCharge?`チャージ · ${asset?asset.name:'—'}${chargeCard?' ('+chargeCard.name+'から)':''} · ${t.date}`:`${t.cat||'振替'} · ${asset?asset.name:'—'} · ${t.date}`;
   return `<div class="tx-item">
-    <div class="tx-left">
-      <div class="tx-name">${t.note||t.cat||'振替'}${badge}</div>
-      <div class="tx-sub">${sub}</div>
-    </div>
+    <div class="tx-left"><div class="tx-name">${t.note||t.cat||'振替'}${badge}</div><div class="tx-sub">${sub}</div></div>
     <div class="tx-right">
       <span class="tx-amt ${amtClass}">${prefix}${fmt(t.amount)}</span>
       <button class="icon-btn" onclick="openEditTx(${t.id})"><i class="ti ti-pencil"></i></button>
@@ -574,9 +523,7 @@ function delTx(id){
   if(t.type==='transfer'){const fa=byId(t.assetId);const ta=byId(t.toAssetId);if(fa)fa.balance+=t.amount;if(ta)ta.balance-=t.amount;}
   if(t.type==='charge'&&a)a.balance-=t.amount;
   S.transactions=S.transactions.filter(x=>x.id!==id);
-  saveState();
-  const active=document.querySelector('.page.active');
-  if(active)renderPage(active.id.replace('page-',''));
+  saveState();const active=document.querySelector('.page.active');if(active)renderPage(active.id.replace('page-',''));
 }
 
 // ========== 取引編集 ==========
@@ -586,12 +533,9 @@ function openEditTx(id){
   document.getElementById('etx-date').value=t.date;
   document.getElementById('etx-amount').value=t.amount;
   document.getElementById('etx-note').value=t.note||'';
-  const catSel=document.getElementById('etx-cat');
-  catSel.innerHTML=S.categories.map(c=>`<option${c===t.cat?' selected':''}>${c}</option>`).join('');
-  const aSel=document.getElementById('etx-asset');
-  aSel.innerHTML=S.assets.map(a=>`<option value="${a.id}"${a.id===t.assetId?' selected':''}>${a.name}</option>`).join('');
-  const showCat=t.type==='expense'||t.type==='income';
-  document.getElementById('etx-fg-cat').style.display=showCat?'':'none';
+  document.getElementById('etx-cat').innerHTML=S.categories.map(c=>`<option${c===t.cat?' selected':''}>${c}</option>`).join('');
+  document.getElementById('etx-asset').innerHTML=S.assets.map(a=>`<option value="${a.id}"${a.id===t.assetId?' selected':''}>${a.name}</option>`).join('');
+  document.getElementById('etx-fg-cat').style.display=(t.type==='expense'||t.type==='income')?'':'none';
   document.getElementById('etx-asset-label').textContent=t.type==='income'?'入金先':'支払い元';
   document.getElementById('modal-edit-tx').style.display='flex';
 }
@@ -612,8 +556,7 @@ function saveEditTx(){
   if(t.type==='expense'&&newAsset&&newAsset.type!=='credit')newAsset.balance-=t.amount;
   if(t.type==='charge'&&newAsset)newAsset.balance+=t.amount;
   saveState();closeModal('modal-edit-tx');
-  const active=document.querySelector('.page.active');
-  if(active)renderPage(active.id.replace('page-',''));
+  const active=document.querySelector('.page.active');if(active)renderPage(active.id.replace('page-',''));
 }
 
 // ========== ADD FORM ==========
@@ -641,19 +584,14 @@ function onTypeChange(){
   document.getElementById('fg-charge-target').style.display=isCharge?'':'none';
   document.getElementById('fg-card-note').style.display='none';
   document.getElementById('fg-charge-note').style.display=isCharge?'':'none';
-  if(!isCharge&&!isTransfer){
-    document.getElementById('asset-label').textContent=type==='income'?'入金先':'支払い元';
-    onAssetChange();
-  }
+  if(!isCharge&&!isTransfer){document.getElementById('asset-label').textContent=type==='income'?'入金先':'支払い元';onAssetChange();}
 }
 function onAssetChange(){
   const asset=byId(parseInt(document.getElementById('a-asset').value));
   const type=document.getElementById('a-type').value;
   const box=document.getElementById('fg-card-note');
-  if(asset&&asset.type==='credit'&&type==='expense'){
-    box.style.display='';
-    document.getElementById('card-note-text').textContent=`${asset.name}：締め日${asset.closeDay}日 / 翌月${asset.payDay}日払い。`;
-  }else{box.style.display='none';}
+  if(asset&&asset.type==='credit'&&type==='expense'){box.style.display='';document.getElementById('card-note-text').textContent=`${asset.name}：締め日${asset.closeDay}日 / 翌月${asset.payDay}日払い。`;}
+  else box.style.display='none';
 }
 function addTx(){
   const type=document.getElementById('a-type').value;
@@ -666,8 +604,7 @@ function addTx(){
     const targetId=parseInt(document.getElementById('a-charge-target').value);
     const cardVal=document.getElementById('a-charge-card').value;
     const chargeCardId=cardVal?parseInt(cardVal):null;
-    const target=byId(targetId);
-    if(!target){alert('チャージ先を選択してください');return;}
+    const target=byId(targetId);if(!target){alert('チャージ先を選択してください');return;}
     target.balance+=amount;
     S.transactions.push({id:S.nextId++,date,type:'charge',cat:'チャージ',amount,assetId:targetId,chargeCardId,note});
   }else if(type==='transfer'){
@@ -684,10 +621,8 @@ function addTx(){
     S.transactions.push({id:S.nextId++,date,type,cat,amount,assetId,note});
   }
   saveState();
-  document.getElementById('a-amount').value='';
-  document.getElementById('a-note').value='';
-  alert('追加しました！');
-  goPage('home',document.querySelector('.nav-btn'));
+  document.getElementById('a-amount').value='';document.getElementById('a-note').value='';
+  alert('追加しました！');goPage('home',document.querySelector('.nav-btn'));
 }
 
 // ========== ASSETS ==========
@@ -699,26 +634,46 @@ function assetsTab(t,btn){
   if(t==='list')renderAssetsList();
 }
 function renderAssets(){renderAssetsList();refreshAssetSelects();}
+
+// 資産一覧：グループ表示（編集・削除ボタン付き）
 function renderAssetsList(){
   const c=document.getElementById('assets-list-container');
   if(!S.assets.length){c.innerHTML='<div class="empty">資産がありません</div>';return;}
-  c.innerHTML='<div class="tx-list">'+S.assets.map(a=>{
-    const isCard=a.type==='credit';
-    const linked=isCard&&a.linkedAssetId?byId(a.linkedAssetId):null;
-    const pending=isCard?cardPendingTotal(a):0;
-    return `<div class="tx-item">
-      <div class="tx-left">
-        <div class="tx-name">${a.name} <span class="tag" style="background:${TYPE_COLOR[a.type]}22;color:${TYPE_COLOR[a.type]}">${TYPE_LABEL[a.type]||a.type}</span></div>
-        <div class="tx-sub">${isCard?`締め${a.closeDay}日 / 翌月${a.payDay}日 / ${linked?linked.name:'引落未設定'}`:fmt(a.balance)}</div>
-        ${isCard?`<div style="font-size:11px;color:var(--amber);margin-top:1px;">未払: ${fmt(pending)}</div>`:''}
-      </div>
-      <div class="tx-right">
-        <button class="icon-btn" onclick="openEditAsset(${a.id})"><i class="ti ti-pencil"></i></button>
-        <button class="icon-btn del" onclick="delAsset(${a.id})"><i class="ti ti-trash"></i></button>
-      </div>
-    </div>`;
-  }).join('')+'</div>';
+  let html='';
+  GROUP_ORDER.forEach(type=>{
+    const group=S.assets.filter(a=>a.type===type);
+    if(!group.length)return;
+    html+=`<div class="asset-group-edit"><div class="asset-group-label">${GROUP_LABEL[type]}</div><div class="tx-list">`;
+    group.forEach(a=>{
+      const isCard=a.type==='credit';
+      const linked=isCard&&a.linkedAssetId?byId(a.linkedAssetId):null;
+      const pending=isCard?cardPendingTotal(a):0;
+      html+=`<div class="tx-item">
+        <div class="tx-left">
+          <div class="tx-name">${a.name}</div>
+          <div class="tx-sub">${isCard?`締め${a.closeDay}日 / 翌月${a.payDay}日 / ${linked?linked.name:'引落未設定'}`:fmt(a.balance)}</div>
+          ${isCard?`<div style="font-size:11px;color:var(--amber);margin-top:1px;">未払: ${fmt(pending)}</div>`:''}
+        </div>
+        <div class="tx-right">
+          <button class="icon-btn" onclick="openEditAsset(${a.id})"><i class="ti ti-pencil"></i></button>
+          <button class="icon-btn del" onclick="delAsset(${a.id})"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>`;
+    });
+    html+='</div></div>';
+  });
+  // グループに属さないものがあれば念のため表示
+  const ungrouped=S.assets.filter(a=>!GROUP_ORDER.includes(a.type));
+  if(ungrouped.length){
+    html+='<div class="asset-group-edit"><div class="asset-group-label">その他</div><div class="tx-list">';
+    ungrouped.forEach(a=>{
+      html+=`<div class="tx-item"><div class="tx-left"><div class="tx-name">${a.name}</div><div class="tx-sub">${fmt(a.balance)}</div></div><div class="tx-right"><button class="icon-btn" onclick="openEditAsset(${a.id})"><i class="ti ti-pencil"></i></button><button class="icon-btn del" onclick="delAsset(${a.id})"><i class="ti ti-trash"></i></button></div></div>`;
+    });
+    html+='</div></div>';
+  }
+  c.innerHTML=html;
 }
+
 function openEditAsset(id){
   const a=byId(id);if(!a)return;
   editingAssetId=id;
@@ -743,15 +698,8 @@ function saveEditAsset(){
   const a=byId(editingAssetId);if(!a)return;
   a.name=document.getElementById('edit-name').value.trim()||a.name;
   a.type=document.getElementById('edit-type').value;
-  if(a.type!=='credit'){
-    a.balance=parseFloat(document.getElementById('edit-balance').value)||0;
-    delete a.closeDay;delete a.payDay;delete a.linkedAssetId;
-  }else{
-    a.closeDay=parseInt(document.getElementById('edit-close').value)||15;
-    a.payDay=parseInt(document.getElementById('edit-pay').value)||27;
-    a.linkedAssetId=parseInt(document.getElementById('edit-linked').value)||null;
-    a.balance=0;
-  }
+  if(a.type!=='credit'){a.balance=parseFloat(document.getElementById('edit-balance').value)||0;delete a.closeDay;delete a.payDay;delete a.linkedAssetId;}
+  else{a.closeDay=parseInt(document.getElementById('edit-close').value)||15;a.payDay=parseInt(document.getElementById('edit-pay').value)||27;a.linkedAssetId=parseInt(document.getElementById('edit-linked').value)||null;a.balance=0;}
   saveState();closeModal('modal-edit-asset');renderAssetsList();refreshAssetSelects();
 }
 function closeModal(id){document.getElementById(id).style.display='none';}
@@ -760,8 +708,7 @@ function renderCardSummary(){
   const c=document.getElementById('card-summary-container');
   if(!cards.length){c.innerHTML='<div class="empty">カードが登録されていません</div>';return;}
   c.innerHTML=cards.map(card=>{
-    const pending=cardPendingTotal(card);
-    const thisMonth=cardMonthTotal(card,curY,curM);
+    const pending=cardPendingTotal(card),thisMonth=cardMonthTotal(card,curY,curM);
     const linked=card.linkedAssetId?byId(card.linkedAssetId):null;
     return `<div class="card-summary-item">
       <div class="cs-name"><i class="ti ti-credit-card"></i>${card.name}</div>
@@ -779,7 +726,7 @@ function payCard(cardId){
   const pending=cardPendingTotal(card);
   if(!linked){alert('引落口座が設定されていません');return;}
   if(!confirm(`${linked.name}から${fmt(pending)}を引き落とします。よろしいですか？`))return;
-  S.transactions.filter(t=>(t.assetId===cardId&&t.type==='expense'||t.chargeCardId===cardId&&t.type==='charge')&&!t.settled).forEach(t=>t.settled=true);
+  S.transactions.filter(t=>((t.assetId===cardId&&t.type==='expense')||(t.chargeCardId===cardId&&t.type==='charge'))&&!t.settled).forEach(t=>t.settled=true);
   linked.balance-=pending;
   S.transactions.push({id:S.nextId++,date:new Date().toISOString().split('T')[0],type:'expense',cat:'カード引落',amount:pending,assetId:linked.id,note:`${card.name}引落`,isCardPayment:true});
   saveState();alert('引き落とし処理が完了しました');renderCardSummary();renderAssetsList();
@@ -791,8 +738,7 @@ function onNewAssetType(){
   document.getElementById('na-balance-wrap').style.display=t==='credit'?'none':'';
 }
 function addAsset(){
-  const name=document.getElementById('na-name').value.trim();
-  const type=document.getElementById('na-type').value;
+  const name=document.getElementById('na-name').value.trim(),type=document.getElementById('na-type').value;
   if(!name){alert('名前を入力してください');return;}
   const asset={id:S.nextId++,name,type};
   if(type!=='credit'){asset.balance=parseFloat(document.getElementById('na-balance').value)||0;}
@@ -816,22 +762,15 @@ function renderCalendar(){
   const todayStr=new Date().toISOString().split('T')[0];
   const dayMap={};
   txs.forEach(t=>{const day=parseInt(t.date.split('-')[2]);if(!dayMap[day])dayMap[day]=[];dayMap[day].push(t);});
-  const dayLabels=['日','月','火','水','木','金','土'];
   let html='<div class="cal-grid">';
-  dayLabels.forEach((l,i)=>html+=`<div class="cal-day-label${i===0?' sun':i===6?' sat':''}">${l}</div>`);
+  ['日','月','火','水','木','金','土'].forEach((l,i)=>html+=`<div class="cal-day-label${i===0?' sun':i===6?' sat':''}">${l}</div>`);
   for(let i=0;i<firstDay;i++)html+='<div class="cal-cell empty"></div>';
   for(let d=1;d<=daysInMonth;d++){
     const dateStr=`${curY}-${String(curM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
-    const isToday=dateStr===todayStr;
-    const isSelected=calSelectedDate===dateStr;
+    const isToday=dateStr===todayStr,isSelected=calSelectedDate===dateStr;
     const dayTxs=dayMap[d]||[];
-    const dots=dayTxs.slice(0,4).map(t=>{
-      const col=t.type==='income'?'var(--green)':t.type==='charge'?'var(--teal)':t.type==='transfer'?'var(--blue)':'var(--red)';
-      return `<span class="cal-dot" style="background:${col}"></span>`;
-    }).join('');
-    html+=`<div class="cal-cell${isToday?' today':''}${isSelected?' selected':''}" onclick="selectCalDay('${dateStr}')">
-      <div class="cal-num">${d}</div><div class="cal-dots">${dots}</div>
-    </div>`;
+    const dots=dayTxs.slice(0,4).map(t=>`<span class="cal-dot" style="background:${t.type==='income'?'var(--green)':t.type==='charge'?'var(--teal)':t.type==='transfer'?'var(--blue)':'var(--red)'}"></span>`).join('');
+    html+=`<div class="cal-cell${isToday?' today':''}${isSelected?' selected':''}" onclick="selectCalDay('${dateStr}')"><div class="cal-num">${d}</div><div class="cal-dots">${dots}</div></div>`;
   }
   html+='</div>';
   document.getElementById('cal-grid-wrap').innerHTML=html;
@@ -839,37 +778,23 @@ function renderCalendar(){
 }
 function selectCalDay(dateStr){calSelectedDate=calSelectedDate===dateStr?null:dateStr;renderCalendar();}
 function renderCalDetail(){
-  const el=document.getElementById('cal-detail');
-  if(!calSelectedDate){el.innerHTML='';return;}
+  const el=document.getElementById('cal-detail');if(!calSelectedDate){el.innerHTML='';return;}
   const dayTxs=S.transactions.filter(t=>t.date===calSelectedDate);
   if(!dayTxs.length){el.innerHTML=`<div class="cal-day-detail"><div class="cal-day-detail-header">${calSelectedDate} — 取引なし</div></div>`;return;}
   el.innerHTML=`<div class="cal-day-detail"><div class="cal-day-detail-header">${calSelectedDate}（${dayTxs.length}件）</div><div class="tx-list">${dayTxs.map(t=>txItemHtml(t)).join('')}</div></div>`;
 }
 
 // ========== GRAPH ==========
-function graphTab(t,btn){
-  curGraphTab=t;graphOffset=0;
-  ['cat','monthly','bank','asset'].forEach(n=>document.getElementById('gt-'+n).style.display=n===t?'':'none');
-  document.querySelectorAll('#page-graph .inner-tab').forEach(b=>b.classList.remove('active'));
-  if(btn)btn.classList.add('active');
-  renderGraphTab();
-}
+function graphTab(t,btn){curGraphTab=t;graphOffset=0;['cat','monthly','bank','asset'].forEach(n=>document.getElementById('gt-'+n).style.display=n===t?'':'none');document.querySelectorAll('#page-graph .inner-tab').forEach(b=>b.classList.remove('active'));if(btn)btn.classList.add('active');renderGraphTab();}
 function chGraphOffset(d){graphOffset+=d;renderGraphTab();}
-function renderGraphTab(){
-  if(curGraphTab==='cat')renderPieChart();
-  if(curGraphTab==='monthly')renderBarChart();
-  if(curGraphTab==='bank')renderBankChart();
-  if(curGraphTab==='asset')renderAssetSummary();
-}
+function renderGraphTab(){if(curGraphTab==='cat')renderPieChart();if(curGraphTab==='monthly')renderBarChart();if(curGraphTab==='bank')renderBankChart();if(curGraphTab==='asset')renderAssetSummary();}
 function renderPieChart(){
   document.getElementById('g-mlabel').textContent=curY+'年'+(curM+1)+'月';
   const txs=monthTx(curY,curM).filter(t=>t.type==='expense'&&!t.isCardPayment);
   const catMap={};txs.forEach(t=>{catMap[t.cat]=(catMap[t.cat]||0)+t.amount;});
-  const labels=Object.keys(catMap),data=Object.values(catMap);
-  const colors=labels.map((_,i)=>COLORS[i%COLORS.length]);
+  const labels=Object.keys(catMap),data=Object.values(catMap),colors=labels.map((_,i)=>COLORS[i%COLORS.length]);
   document.getElementById('pie-legend').innerHTML=labels.map((l,i)=>`<span class="legend-item"><span class="legend-dot" style="background:${colors[i]}"></span>${l} ${fmt(catMap[l])}</span>`).join('');
-  if(pieChart)pieChart.destroy();
-  if(!labels.length)return;
+  if(pieChart)pieChart.destroy();if(!labels.length)return;
   pieChart=new Chart(document.getElementById('pieChart'),{type:'doughnut',data:{labels,datasets:[{data,backgroundColor:colors,borderWidth:2,borderColor:'#f5f5f5'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}}}});
 }
 function renderBarChart(){
@@ -881,22 +806,16 @@ function renderBarChart(){
   barChart=new Chart(document.getElementById('barChart'),{type:'bar',data:{labels:months.map(m=>m.label),datasets:[{label:'収入',data:incArr,backgroundColor:'#1D9E75'},{label:'支出',data:expArr,backgroundColor:'#D85A30'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{autoSkip:false}},y:{ticks:{callback:v=>'¥'+Math.round(v).toLocaleString('ja-JP')}}}}});
 }
 function renderBankChart(){
-  const banks=S.assets.filter(a=>a.type==='bank');
-  const months=getMonthRange(6);
+  const banks=S.assets.filter(a=>a.type==='bank'),months=getMonthRange(6);
   document.getElementById('bank-range-label').textContent=months[0].label+'〜'+months[5].label;
   document.getElementById('bank-legend').innerHTML=banks.length?banks.map((b,i)=>`<span class="legend-item"><span class="legend-dot" style="background:${BANK_COLORS[i%BANK_COLORS.length]}"></span>${b.name}</span>`).join(''):'<span style="font-size:12px;color:var(--muted);">銀行口座が登録されていません</span>';
-  if(bankChart)bankChart.destroy();
-  if(!banks.length)return;
+  if(bankChart)bankChart.destroy();if(!banks.length)return;
   bankChart=new Chart(document.getElementById('bankChart'),{type:'line',data:{labels:months.map(m=>m.label),datasets:banks.map((bank,i)=>({label:bank.name,data:months.map(mo=>calcBankBalanceAt(bank,mo.y,mo.m)),borderColor:BANK_COLORS[i%BANK_COLORS.length],backgroundColor:BANK_COLORS[i%BANK_COLORS.length]+'22',tension:.3,fill:true,pointRadius:4}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'¥'+Math.round(v).toLocaleString('ja-JP')}}}}});
 }
 function renderAssetSummary(){
   document.getElementById('ga-mlabel').textContent=curY+'年'+(curM+1)+'月';
   const txs=monthTx(curY,curM);
-  const rows=S.assets.map(a=>{
-    const inc=txs.filter(t=>t.type==='income'&&t.assetId===a.id).reduce((s,t)=>s+t.amount,0);
-    const exp=txs.filter(t=>t.type==='expense'&&t.assetId===a.id).reduce((s,t)=>s+t.amount,0);
-    return{a,inc,exp,bal:inc-exp};
-  }).filter(r=>r.inc||r.exp);
+  const rows=S.assets.map(a=>{const inc=txs.filter(t=>t.type==='income'&&t.assetId===a.id).reduce((s,t)=>s+t.amount,0);const exp=txs.filter(t=>t.type==='expense'&&t.assetId===a.id).reduce((s,t)=>s+t.amount,0);return{a,inc,exp,bal:inc-exp};}).filter(r=>r.inc||r.exp);
   const body=document.getElementById('asset-summary-body');
   if(!rows.length){body.innerHTML='<div class="empty">この月の取引はありません</div>';return;}
   body.innerHTML=rows.map(r=>`<div class="asr-row"><span class="asr-name">${r.a.name}</span><span class="asr-inc">${r.inc?'+'+fmt(r.inc):'—'}</span><span class="asr-exp">${r.exp?'-'+fmt(r.exp):'—'}</span><span class="asr-bal" style="color:${r.bal>=0?'var(--green)':'var(--red)'}">${fmt(r.bal)}</span></div>`).join('');
@@ -904,7 +823,20 @@ function renderAssetSummary(){
 
 // ========== SETTINGS ==========
 function renderSettings(){
-  document.getElementById('cat-list').innerHTML=S.categories.map(c=>`<span class="cat-pill">${c}<button onclick="delCat('${c}')">×</button></span>`).join('');
+  // カテゴリ一覧（編集・削除ボタン付き）
+  const cl=document.getElementById('cat-list');
+  if(!S.categories.length){cl.innerHTML='<div class="empty">カテゴリがありません</div>';}
+  else{
+    cl.innerHTML=S.categories.map((c,i)=>`
+      <div class="cat-item">
+        <span class="cat-item-name">${c}</span>
+        <div class="cat-item-actions">
+          <button class="icon-btn" onclick="openEditCat('${c}')"><i class="ti ti-pencil"></i></button>
+          <button class="icon-btn del" onclick="delCat('${c}')"><i class="ti ti-trash"></i></button>
+        </div>
+      </div>`).join('');
+  }
+  // 予算
   document.getElementById('b-cat').innerHTML=S.categories.map(c=>`<option>${c}</option>`).join('');
   const bc=document.getElementById('budget-list-container');
   const cats=Object.keys(S.budgets);
@@ -917,8 +849,44 @@ function renderSettings(){
     return `<div class="budget-item"><div class="budget-hd"><span style="font-weight:500">${cat}</span><span style="color:var(--muted)">${fmt(spent)} / ${fmt(lim)}</span></div><div class="bbar-wrap"><div class="bbar" style="width:${pct}%;background:${col}"></div></div></div>`;
   }).join('');
 }
-function addCat(){const v=document.getElementById('new-cat').value.trim();if(!v)return;if(!S.categories.includes(v)){S.categories.push(v);saveState();}document.getElementById('new-cat').value='';renderSettings();}
-function delCat(c){S.categories=S.categories.filter(x=>x!==c);delete S.budgets[c];saveState();renderSettings();}
+
+// カテゴリ追加
+function addCat(){
+  const v=document.getElementById('new-cat').value.trim();
+  if(!v)return;
+  if(S.categories.includes(v)){alert('同じ名前のカテゴリが既にあります');return;}
+  S.categories.push(v);saveState();
+  document.getElementById('new-cat').value='';
+  renderSettings();
+}
+
+// カテゴリ名前変更モーダル
+function openEditCat(name){
+  editingCatOld=name;
+  document.getElementById('edit-cat-name').value=name;
+  document.getElementById('modal-edit-cat').style.display='flex';
+}
+function saveEditCat(){
+  const newName=document.getElementById('edit-cat-name').value.trim();
+  if(!newName){alert('カテゴリ名を入力してください');return;}
+  if(newName!==editingCatOld&&S.categories.includes(newName)){alert('同じ名前のカテゴリが既にあります');return;}
+  // カテゴリ名を更新
+  const idx=S.categories.indexOf(editingCatOld);
+  if(idx!==-1)S.categories[idx]=newName;
+  // 予算も付け替え
+  if(S.budgets[editingCatOld]!==undefined){S.budgets[newName]=S.budgets[editingCatOld];delete S.budgets[editingCatOld];}
+  // 取引のカテゴリも更新
+  S.transactions.forEach(t=>{if(t.cat===editingCatOld)t.cat=newName;});
+  saveState();closeModal('modal-edit-cat');renderSettings();
+}
+
+function delCat(c){
+  if(!confirm(`「${c}」を削除しますか？\nこのカテゴリの取引は「その他」になります。`))return;
+  S.categories=S.categories.filter(x=>x!==c);
+  delete S.budgets[c];
+  S.transactions.forEach(t=>{if(t.cat===c)t.cat='その他';});
+  saveState();renderSettings();
+}
 function setBudget(){const cat=document.getElementById('b-cat').value;const amt=parseFloat(document.getElementById('b-amt').value);if(!amt||amt<=0)return;S.budgets[cat]=amt;saveState();document.getElementById('b-amt').value='';renderSettings();}
 function resetAll(){localStorage.removeItem(STORAGE_KEY);S=defaultState();saveState();renderHome();}
 
