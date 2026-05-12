@@ -273,6 +273,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       <div class="row2" style="margin:9px 0;"><select id="b-cat"></select><input type="number" id="b-amt" placeholder="予算額" inputmode="numeric"></div>
       <button class="btn btn-secondary" onclick="setBudget()">予算を設定</button>
 
+      <!-- サブスク・固定費 -->
+      <div class="sec-title" style="margin-top:22px;">サブスク・固定費</div>
+      <div id="sub-list"></div>
+      <button class="btn btn-secondary" style="margin-top:8px;" onclick="openAddSub()"><i class="ti ti-plus"></i> 追加する</button>
+
       <div class="sec-title" style="margin-top:22px;">データ管理</div>
       <button class="btn btn-danger" onclick="if(confirm('全データを削除しますか？'))resetAll()"><i class="ti ti-trash"></i> データを全削除</button>
     </div>
@@ -284,6 +289,43 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
     <button class="nav-btn" onclick="goPage('assets',this)"><i class="ti ti-wallet"></i>資産</button>
     <button class="nav-btn" onclick="goPage('graph',this)"><i class="ti ti-chart-pie"></i>グラフ</button>
     <button class="nav-btn" onclick="goPage('settings',this)"><i class="ti ti-settings"></i>設定</button>
+  </div>
+</div>
+
+<!-- サブスク追加・編集モーダル -->
+<div class="modal-overlay" id="modal-edit-sub" style="display:none;" onclick="closeModal('modal-edit-sub')">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-title" id="sub-modal-title">サブスク・固定費を追加</div>
+    <div class="form-group"><label>名前</label><input type="text" id="sub-name" placeholder="例：Netflix、家賃"></div>
+    <div class="form-group"><label>カテゴリ</label><select id="sub-cat"></select></div>
+    <div class="form-group"><label>金額（円）</label><input type="number" id="sub-amount" placeholder="0" inputmode="numeric"></div>
+    <div class="form-group"><label>支払い資産</label><select id="sub-asset"></select></div>
+    <div class="form-group"><label>請求サイクル</label>
+      <select id="sub-cycle" onchange="onSubCycleChange()">
+        <option value="monthly">毎月</option>
+        <option value="yearly">毎年</option>
+      </select>
+    </div>
+    <div class="row2">
+      <div class="form-group" id="sub-month-wrap" style="display:none;">
+        <label>請求月（毎年のみ）</label>
+        <select id="sub-month">
+          <option value="1">1月</option><option value="2">2月</option><option value="3">3月</option>
+          <option value="4">4月</option><option value="5">5月</option><option value="6">6月</option>
+          <option value="7">7月</option><option value="8">8月</option><option value="9">9月</option>
+          <option value="10">10月</option><option value="11">11月</option><option value="12">12月</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>請求日</label>
+        <input type="number" id="sub-day" placeholder="例：11" min="1" max="31" inputmode="numeric">
+      </div>
+    </div>
+    <div class="form-group"><label>メモ（任意）</label><input type="text" id="sub-note" placeholder=""></div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-edit-sub')">キャンセル</button>
+      <button class="btn btn-primary" onclick="saveSub()">保存する</button>
+    </div>
   </div>
 </div>
 
@@ -383,6 +425,7 @@ function defaultState(){
     ],
     categories:['食費','交通費','住居費','光熱費','娯楽','医療','衣類','その他'],
     budgets:{食費:30000,交通費:10000,娯楽:15000},
+    subscriptions:[],
     transactions:[],
     nextId:100
   };
@@ -830,14 +873,18 @@ function renderSettings(){
   document.getElementById('b-cat').innerHTML=S.categories.map(c=>`<option>${c}</option>`).join('');
   const bc=document.getElementById('budget-list-container');
   const cats=Object.keys(S.budgets);
-  if(!cats.length){bc.innerHTML='<div class="empty">予算が設定されていません</div>';return;}
-  const txs=monthTx(curY,curM);
-  bc.innerHTML=cats.map(cat=>{
-    const spent=txs.filter(t=>t.type==='expense'&&t.cat===cat).reduce((s,t)=>s+t.amount,0);
-    const lim=S.budgets[cat],pct=Math.min(100,Math.round(spent/lim*100));
-    const col=pct>=100?'var(--red)':pct>=80?'var(--amber)':'var(--green)';
-    return `<div class="budget-item"><div class="budget-hd"><span style="font-weight:500">${cat}</span><span style="color:var(--muted)">${fmt(spent)} / ${fmt(lim)}</span></div><div class="bbar-wrap"><div class="bbar" style="width:${pct}%;background:${col}"></div></div></div>`;
-  }).join('');
+  if(!cats.length){bc.innerHTML='<div class="empty">予算が設定されていません</div>';}
+  else{
+    const txs=monthTx(curY,curM);
+    bc.innerHTML=cats.map(cat=>{
+      const spent=txs.filter(t=>t.type==='expense'&&t.cat===cat).reduce((s,t)=>s+t.amount,0);
+      const lim=S.budgets[cat],pct=Math.min(100,Math.round(spent/lim*100));
+      const col=pct>=100?'var(--red)':pct>=80?'var(--amber)':'var(--green)';
+      return `<div class="budget-item"><div class="budget-hd"><span style="font-weight:500">${cat}</span><span style="color:var(--muted)">${fmt(spent)} / ${fmt(lim)}</span></div><div class="bbar-wrap"><div class="bbar" style="width:${pct}%;background:${col}"></div></div></div>`;
+    }).join('');
+  }
+  // サブスク
+  renderSubList();
 }
 
 // カテゴリ追加
@@ -878,8 +925,157 @@ function delCat(c){
   saveState();renderSettings();
 }
 function setBudget(){const cat=document.getElementById('b-cat').value;const amt=parseFloat(document.getElementById('b-amt').value);if(!amt||amt<=0)return;S.budgets[cat]=amt;saveState();document.getElementById('b-amt').value='';renderSettings();}
+
+// ========== SUBSCRIPTIONS ==========
+let editingSubId=null;
+
+function checkAndGenerateSubscriptions(){
+  if(!S.subscriptions||!S.subscriptions.length)return;
+  const now=new Date();
+  const todayY=now.getFullYear(),todayM=now.getMonth(),todayD=now.getDate();
+  const todayStr=`${todayY}-${String(todayM+1).padStart(2,'0')}-${String(todayD).padStart(2,'0')}`;
+  let generated=false;
+  S.subscriptions.forEach(sub=>{
+    if(sub.paused)return;
+    if(sub.cycle==='monthly'){
+      // 毎月：今日が請求日なら今月分を生成
+      if(todayD!==sub.day)return;
+      // 既に今月この日付で生成済みか確認
+      const already=S.transactions.some(t=>t.subId===sub.id&&t.date===todayStr);
+      if(already)return;
+      generateSubTx(sub,todayStr);
+      generated=true;
+    } else if(sub.cycle==='yearly'){
+      // 毎年：今日が請求月・日なら生成
+      if(todayM+1!==sub.month||todayD!==sub.day)return;
+      const already=S.transactions.some(t=>t.subId===sub.id&&t.date===todayStr);
+      if(already)return;
+      generateSubTx(sub,todayStr);
+      generated=true;
+    }
+  });
+  if(generated)saveState();
+}
+
+function generateSubTx(sub,dateStr){
+  const asset=byId(sub.assetId);
+  const tx={
+    id:S.nextId++,
+    date:dateStr,
+    type:'expense',
+    cat:sub.cat,
+    amount:sub.amount,
+    assetId:sub.assetId,
+    note:sub.name+(sub.note?` (${sub.note})`:''),
+    subId:sub.id,
+    isAuto:true
+  };
+  if(asset&&asset.type!=='credit')asset.balance-=sub.amount;
+  S.transactions.push(tx);
+}
+
+function renderSubList(){
+  if(!S.subscriptions)S.subscriptions=[];
+  const el=document.getElementById('sub-list');
+  if(!S.subscriptions.length){el.innerHTML='<div class="empty" style="padding:16px;">登録されていません</div>';return;}
+  el.innerHTML='<div class="tx-list">'+S.subscriptions.map(sub=>{
+    const asset=byId(sub.assetId);
+    const cycleLabel=sub.cycle==='yearly'?`毎年${sub.month}月${sub.day}日`:`毎月${sub.day}日`;
+    const statusColor=sub.paused?'var(--muted)':'var(--green)';
+    const statusLabel=sub.paused?'停止中':'有効';
+    return `<div class="tx-item">
+      <div class="tx-left">
+        <div class="tx-name" style="color:${sub.paused?'var(--muted)':'#1a1a1a'}">${sub.name}
+          <span class="badge" style="background:${sub.paused?'#f0f0f0':'#D1F5E8'};color:${statusColor}">${statusLabel}</span>
+        </div>
+        <div class="tx-sub">${fmt(sub.amount)} · ${cycleLabel} · ${asset?asset.name:'—'} · ${sub.cat}</div>
+      </div>
+      <div class="tx-right">
+        <button class="icon-btn" onclick="toggleSub(${sub.id})" title="${sub.paused?'再開':'停止'}">
+          <i class="ti ti-${sub.paused?'player-play':'player-pause'}"></i>
+        </button>
+        <button class="icon-btn" onclick="openEditSub(${sub.id})"><i class="ti ti-pencil"></i></button>
+        <button class="icon-btn del" onclick="delSub(${sub.id})"><i class="ti ti-trash"></i></button>
+      </div>
+    </div>`;
+  }).join('')+'</div>';
+}
+
+function toggleSub(id){
+  const sub=S.subscriptions.find(s=>s.id===id);
+  if(!sub)return;
+  sub.paused=!sub.paused;
+  saveState();renderSubList();
+}
+
+function openAddSub(){
+  editingSubId=null;
+  document.getElementById('sub-modal-title').textContent='サブスク・固定費を追加';
+  document.getElementById('sub-name').value='';
+  document.getElementById('sub-amount').value='';
+  document.getElementById('sub-day').value='';
+  document.getElementById('sub-note').value='';
+  document.getElementById('sub-cycle').value='monthly';
+  document.getElementById('sub-month').value=String(new Date().getMonth()+1);
+  document.getElementById('sub-month-wrap').style.display='none';
+  // カテゴリ
+  document.getElementById('sub-cat').innerHTML=S.categories.map(c=>`<option>${c}</option>`).join('');
+  // 資産
+  document.getElementById('sub-asset').innerHTML=S.assets.map(a=>`<option value="${a.id}">${a.name}</option>`).join('');
+  document.getElementById('modal-edit-sub').style.display='flex';
+}
+
+function openEditSub(id){
+  const sub=S.subscriptions.find(s=>s.id===id);if(!sub)return;
+  editingSubId=id;
+  document.getElementById('sub-modal-title').textContent='サブスク・固定費を編集';
+  document.getElementById('sub-name').value=sub.name;
+  document.getElementById('sub-amount').value=sub.amount;
+  document.getElementById('sub-day').value=sub.day;
+  document.getElementById('sub-note').value=sub.note||'';
+  document.getElementById('sub-cycle').value=sub.cycle||'monthly';
+  document.getElementById('sub-month').value=String(sub.month||1);
+  document.getElementById('sub-month-wrap').style.display=sub.cycle==='yearly'?'':'none';
+  document.getElementById('sub-cat').innerHTML=S.categories.map(c=>`<option${c===sub.cat?' selected':''}>${c}</option>`).join('');
+  document.getElementById('sub-asset').innerHTML=S.assets.map(a=>`<option value="${a.id}"${a.id===sub.assetId?' selected':''}>${a.name}</option>`).join('');
+  document.getElementById('modal-edit-sub').style.display='flex';
+}
+
+function onSubCycleChange(){
+  const isYearly=document.getElementById('sub-cycle').value==='yearly';
+  document.getElementById('sub-month-wrap').style.display=isYearly?'':'none';
+}
+
+function saveSub(){
+  const name=document.getElementById('sub-name').value.trim();
+  const cat=document.getElementById('sub-cat').value;
+  const amount=parseFloat(document.getElementById('sub-amount').value);
+  const assetId=parseInt(document.getElementById('sub-asset').value);
+  const cycle=document.getElementById('sub-cycle').value;
+  const day=parseInt(document.getElementById('sub-day').value);
+  const month=parseInt(document.getElementById('sub-month').value);
+  const note=document.getElementById('sub-note').value.trim();
+  if(!name||!amount||!day){alert('名前・金額・請求日を入力してください');return;}
+  if(!S.subscriptions)S.subscriptions=[];
+  if(editingSubId){
+    const sub=S.subscriptions.find(s=>s.id===editingSubId);
+    if(sub){Object.assign(sub,{name,cat,amount,assetId,cycle,day,month,note});}
+  } else {
+    S.subscriptions.push({id:S.nextId++,name,cat,amount,assetId,cycle,day,month,note,paused:false});
+  }
+  saveState();closeModal('modal-edit-sub');renderSubList();
+}
+
+function delSub(id){
+  if(!confirm('このサブスク・固定費を削除しますか？\n過去の取引は残ります。'))return;
+  S.subscriptions=S.subscriptions.filter(s=>s.id!==id);
+  saveState();renderSubList();
+}
+
 function resetAll(){localStorage.removeItem(STORAGE_KEY);S=defaultState();saveState();renderHome();}
 
+// 起動時：サブスク自動生成チェック → ホーム表示
+checkAndGenerateSubscriptions();
 renderHome();
 </script>
 </body>
