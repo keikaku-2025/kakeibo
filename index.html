@@ -800,7 +800,7 @@ function renderHomeCalendar(txs){
     const dots=dayTxs.slice(0,4).map(t=>`<span class="cal-dot" style="background:${t.type==='income'?'var(--green)':t.type==='charge'?'var(--teal)':t.type==='transfer'?'var(--blue)':'var(--red)'}"></span>`).join('');
     // その日の支出合計
     const dayExp=dayTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
-    const expLabel=dayExp>0?`<div class="cal-exp-amt">${dayExp>=10000?(dayExp/10000).toFixed(1)+'万':dayExp>=1000?Math.round(dayExp/100)+'百':dayExp+'円'}</div>`:'';
+    const expLabel=dayExp>0?`<div class="cal-exp-amt">${dayExp>=10000?(dayExp/10000).toFixed(1)+'万':dayExp.toLocaleString('ja-JP')}</div>`:'';
     html+=`<div class="cal-cell${isToday?' today':''}${isSelected?' selected':''}" onclick="selectCalDay('${dateStr}')">
       <div class="cal-num">${d}</div>
       <div class="cal-dots">${dots}</div>
