@@ -124,6 +124,8 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 .cal-num{font-size:11px;font-weight:600;color:#1a1a1a;margin-bottom:2px;}
 .cal-dots{display:flex;flex-wrap:wrap;gap:2px;margin-top:1px;}
 .cal-dot{width:5px;height:5px;border-radius:50%;}
+.cal-exp-amt{font-size:9px;color:var(--red);margin-top:2px;line-height:1.1;font-weight:600;}
+.cal-cell.selected .cal-exp-amt{color:#ffaaaa;}
 .cal-day-detail{background:#fff;border-radius:var(--radius);border:1px solid var(--border);overflow:hidden;margin-bottom:10px;}
 .cal-day-detail-header{padding:10px 13px;font-size:13px;font-weight:600;background:#fafafa;border-bottom:1px solid var(--border);}
 /* モーダル */
@@ -777,24 +779,33 @@ function addAsset(){
 function renderHomeCalendar(txs){
   if(!txs)txs=monthTx(curY,curM);
   const todayStr=new Date().toISOString().split('T')[0];
-  // 初期選択：今月の今日、なければその月の最終日
   if(!calSelectedDate){
     const isThisMonth=curY===new Date().getFullYear()&&curM===new Date().getMonth();
     calSelectedDate=isThisMonth?todayStr:`${curY}-${String(curM+1).padStart(2,'0')}-${new Date(curY,curM+1,0).getDate()}`;
   }
-  const firstDay=new Date(curY,curM,1).getDay();
+  // 月曜始まり：日曜=0→6、月曜=1→0、...土曜=6→5
+  const rawFirstDay=new Date(curY,curM,1).getDay(); // 0=日〜6=土
+  const firstDay=(rawFirstDay+6)%7; // 月曜始まりに変換
   const daysInMonth=new Date(curY,curM+1,0).getDate();
   const dayMap={};
   txs.forEach(t=>{const day=parseInt(t.date.split('-')[2]);if(!dayMap[day])dayMap[day]=[];dayMap[day].push(t);});
   let html='<div class="cal-grid">';
-  ['日','月','火','水','木','金','土'].forEach((l,i)=>html+=`<div class="cal-day-label${i===0?' sun':i===6?' sat':''}">${l}</div>`);
+  // 月曜始まりのヘッダー
+  ['月','火','水','木','金','土','日'].forEach((l,i)=>html+=`<div class="cal-day-label${i===6?' sun':i>=5?' sat':''}">${l}</div>`);
   for(let i=0;i<firstDay;i++)html+='<div class="cal-cell empty"></div>';
   for(let d=1;d<=daysInMonth;d++){
     const dateStr=`${curY}-${String(curM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isToday=dateStr===todayStr,isSelected=calSelectedDate===dateStr;
     const dayTxs=dayMap[d]||[];
     const dots=dayTxs.slice(0,4).map(t=>`<span class="cal-dot" style="background:${t.type==='income'?'var(--green)':t.type==='charge'?'var(--teal)':t.type==='transfer'?'var(--blue)':'var(--red)'}"></span>`).join('');
-    html+=`<div class="cal-cell${isToday?' today':''}${isSelected?' selected':''}" onclick="selectCalDay('${dateStr}')"><div class="cal-num">${d}</div><div class="cal-dots">${dots}</div></div>`;
+    // その日の支出合計
+    const dayExp=dayTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const expLabel=dayExp>0?`<div class="cal-exp-amt">${dayExp>=10000?(dayExp/10000).toFixed(1)+'万':dayExp>=1000?Math.round(dayExp/100)+'百':dayExp+'円'}</div>`:'';
+    html+=`<div class="cal-cell${isToday?' today':''}${isSelected?' selected':''}" onclick="selectCalDay('${dateStr}')">
+      <div class="cal-num">${d}</div>
+      <div class="cal-dots">${dots}</div>
+      ${expLabel}
+    </div>`;
   }
   html+='</div>';
   document.getElementById('home-cal-grid').innerHTML=html;
@@ -814,7 +825,18 @@ function renderHomeCalDetail(){
     el.innerHTML=`<div class="cal-day-detail"><div class="cal-day-detail-header">${calSelectedDate} — 取引なし</div></div>`;
     return;
   }
-  el.innerHTML=`<div class="cal-day-detail"><div class="cal-day-detail-header">${calSelectedDate}（${dayTxs.length}件）</div><div class="tx-list">${dayTxs.map(t=>txItemHtml(t)).join('')}</div></div>`;
+  const dayExp=dayTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const dayInc=dayTxs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
+  const summary=[];
+  if(dayExp>0)summary.push(`<span style="color:var(--red)">支出 ${fmt(dayExp)}</span>`);
+  if(dayInc>0)summary.push(`<span style="color:var(--green)">収入 ${fmt(dayInc)}</span>`);
+  el.innerHTML=`<div class="cal-day-detail">
+    <div class="cal-day-detail-header" style="display:flex;justify-content:space-between;align-items:center;">
+      <span>${calSelectedDate}（${dayTxs.length}件）</span>
+      <span style="font-size:12px;font-weight:500;">${summary.join(' / ')}</span>
+    </div>
+    <div class="tx-list">${dayTxs.map(t=>txItemHtml(t)).join('')}</div>
+  </div>`;
 }
 
 // ========== GRAPH ==========
