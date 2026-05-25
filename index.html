@@ -411,6 +411,40 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 </div>
 
+<!-- ポイント充当モーダル -->
+<div class="modal-overlay" id="modal-point-pay" style="display:none;" onclick="closeModal('modal-point-pay')">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-title">引落処理・ポイント充当</div>
+    <div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:14px;">
+      <div style="font-size:12px;color:var(--muted);margin-bottom:4px;" id="pp-card-name"></div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+        <span>未払い合計</span><span id="pp-total" style="font-weight:600;"></span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:13px;">
+        <span>引落口座</span><span id="pp-linked-name" style="font-weight:500;"></span>
+      </div>
+    </div>
+    <div class="form-group">
+      <label>ポイント充当額（円）<span style="font-size:11px;color:var(--muted);margin-left:4px;">0の場合は全額口座から引落</span></label>
+      <input type="number" id="pp-point-amt" placeholder="0" min="0" inputmode="numeric" oninput="updatePointPreview()">
+    </div>
+    <div style="background:#E6FAF8;border-radius:10px;padding:12px;margin-bottom:14px;">
+      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
+        <span style="color:var(--teal);">ポイント充当</span>
+        <span id="pp-point-label" style="font-weight:600;color:var(--teal);">¥0</span>
+      </div>
+      <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;">
+        <span>実際の引落額</span>
+        <span id="pp-actual-label" style="color:var(--red);"></span>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-point-pay')">キャンセル</button>
+      <button class="btn btn-primary" onclick="executePayCard()">引き落とす</button>
+    </div>
+  </div>
+</div>
+
 <!-- カテゴリ編集モーダル -->
 <div class="modal-overlay" id="modal-edit-cat" style="display:none;" onclick="closeModal('modal-edit-cat')">
   <div class="modal-box" onclick="event.stopPropagation()">
@@ -880,15 +914,65 @@ function renderCardSummary(){
     </div>`;
   }).join('');
 }
+let payingCardId=null;
 function payCard(cardId){
   const card=byId(cardId),linked=card.linkedAssetId?byId(card.linkedAssetId):null;
   const pending=cardPendingTotal(card);
   if(!linked){alert('引落口座が設定されていません');return;}
-  if(!confirm(`${linked.name}から${fmt(pending)}を引き落とします。よろしいですか？`))return;
-  S.transactions.filter(t=>((t.assetId===cardId&&t.type==='expense')||(t.chargeCardId===cardId&&t.type==='charge'))&&!t.settled).forEach(t=>t.settled=true);
-  linked.balance-=pending;
-  S.transactions.push({id:S.nextId++,date:todayStr(),type:'expense',cat:'カード引落',amount:pending,assetId:linked.id,note:`${card.name}引落`,isCardPayment:true});
-  saveState();alert('引き落とし処理が完了しました');renderCardSummary();renderAssetsList();
+  if(pending<=0){alert('未払い残高はありません');return;}
+  payingCardId=cardId;
+  document.getElementById('pp-card-name').textContent=`${card.name}の引落処理`;
+  document.getElementById('pp-total').textContent=fmt(pending);
+  document.getElementById('pp-linked-name').textContent=linked.name;
+  document.getElementById('pp-point-amt').value='';
+  document.getElementById('pp-point-label').textContent='¥0';
+  document.getElementById('pp-actual-label').textContent=fmt(pending);
+  document.getElementById('modal-point-pay').style.display='flex';
+}
+function updatePointPreview(){
+  const card=byId(payingCardId);if(!card)return;
+  const pending=cardPendingTotal(card);
+  const pointAmt=Math.min(parseFloat(document.getElementById('pp-point-amt').value)||0,pending);
+  const actual=Math.max(0,pending-pointAmt);
+  document.getElementById('pp-point-label').textContent=fmt(pointAmt);
+  document.getElementById('pp-actual-label').textContent=fmt(actual);
+}
+function executePayCard(){
+  const card=byId(payingCardId);if(!card)return;
+  const linked=card.linkedAssetId?byId(card.linkedAssetId):null;
+  const pending=cardPendingTotal(card);
+  const pointAmt=Math.min(parseFloat(document.getElementById('pp-point-amt').value)||0,pending);
+  const actual=Math.max(0,pending-pointAmt);
+  if(!linked){alert('引落口座が設定されていません');return;}
+  const confirmMsg=pointAmt>0
+    ?`${fmt(pending)}のうち ${fmt(pointAmt)} をポイント充当し、${fmt(actual)} を${linked.name}から引き落とします。よろしいですか？`
+    :`${fmt(actual)} を${linked.name}から引き落とします。よろしいですか？`;
+  if(!confirm(confirmMsg))return;
+  // 取引をsettledに
+  S.transactions.filter(t=>((t.assetId===card.id&&t.type==='expense')||(t.chargeCardId===card.id&&t.type==='charge'))&&!t.settled).forEach(t=>t.settled=true);
+  // 口座残高を実際の引落額だけ減らす
+  linked.balance-=actual;
+  // 引落記録（実際の引落額）
+  const date=todayStr();
+  S.transactions.push({
+    id:S.nextId++,date,type:'expense',cat:'カード引落',
+    amount:actual,assetId:linked.id,
+    note:`${card.name}引落${pointAmt>0?`（ポイント充当 ${fmt(pointAmt)}）`:''}`,
+    isCardPayment:true
+  });
+  // ポイント充当があれば別途記録（収支に影響しない備忘録として）
+  if(pointAmt>0){
+    S.transactions.push({
+      id:S.nextId++,date,type:'point',cat:'ポイント充当',
+      amount:pointAmt,assetId:card.id,
+      note:`${card.name} ポイント充当`,
+      isCardPayment:true
+    });
+  }
+  saveState();
+  closeModal('modal-point-pay');
+  alert('引き落とし処理が完了しました');
+  renderCardSummary();renderAssetsList();renderHome();
 }
 function delAsset(id){if(!confirm('この資産を削除しますか？'))return;S.assets=S.assets.filter(a=>a.id!==id);saveState();renderAssets();}
 function onNewAssetType(){
