@@ -419,6 +419,33 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 </div>
 
+<!-- 今月の予定追加モーダル -->
+<div class="modal-overlay" id="modal-add-plan" style="display:none;" onclick="closeModal('modal-add-plan')">
+  <div class="modal-box" onclick="event.stopPropagation()">
+    <div class="modal-title">予定を追加</div>
+    <div class="form-group">
+      <label>内容</label>
+      <input type="text" id="plan-name" placeholder="例：旅行、歯医者">
+    </div>
+    <div class="form-group">
+      <label>日付（任意）</label>
+      <div style="display:flex;gap:8px;align-items:center;">
+        <select id="plan-month" style="flex:1;">
+          <option value="">月を選択</option>
+        </select>
+        <span style="color:var(--muted);">/</span>
+        <select id="plan-day" style="flex:1;">
+          <option value="">日を選択</option>
+        </select>
+      </div>
+    </div>
+    <div class="modal-actions">
+      <button class="btn btn-secondary" onclick="closeModal('modal-add-plan')">キャンセル</button>
+      <button class="btn btn-primary" onclick="savePlan()">追加する</button>
+    </div>
+  </div>
+</div>
+
 <!-- ポイント充当モーダル -->
 <div class="modal-overlay" id="modal-point-pay" style="display:none;" onclick="closeModal('modal-point-pay')">
   <div class="modal-box" onclick="event.stopPropagation()">
@@ -1679,25 +1706,51 @@ function renderHomePlans(){
     <div class="tx-item">
       <div class="tx-left">
         <div class="tx-name">${p.label||p.name}${p.isCard?'<span class="badge" style="background:#EEEDFE;color:var(--purple);">引落予定</span>':''}</div>
-        <div class="tx-sub">${p.date||'今月'}</div>
+        <div class="tx-sub">${p.dateLabel||p.date||'今月'}</div>
       </div>
       <div class="tx-right">
-        ${p.amount?`<span class="tx-amt exp">-${fmt(p.amount)}</span>`:''}
+        ${p.isCard&&p.amount?`<span class="tx-amt exp">-${fmt(p.amount)}</span>`:''}
         ${!p.isCard?`<button class="icon-btn del" onclick="delPlan('${p.id}')"><i class="ti ti-x"></i></button>`:''}
       </div>
     </div>`).join('')+'</div>';
 }
-let editPlanModal=false;
 function openAddPlan(){
-  const name=prompt('予定の内容を入力してください（例：旅行費用）');
-  if(!name)return;
-  const amtStr=prompt('予算額（円）を入力してください（任意、スキップはキャンセル）');
-  const amount=amtStr?parseFloat(amtStr)||0:0;
-  const dateStr=prompt('日付を入力してください（例：2025-06-15、スキップはキャンセル）');
-  if(!S.plans)S.plans=[];
   const now=new Date();
-  S.plans.push({id:'plan_'+Date.now(),name,amount,date:dateStr||null,year:now.getFullYear(),month:now.getMonth()});
-  saveState();renderHome();
+  // 月セレクト
+  const mSel=document.getElementById('plan-month');
+  mSel.innerHTML='<option value="">月を選択</option>';
+  for(let i=1;i<=12;i++)mSel.innerHTML+=`<option value="${i}"${i===now.getMonth()+1?' selected':''}>${i}月</option>`;
+  // 日セレクト
+  const dSel=document.getElementById('plan-day');
+  dSel.innerHTML='<option value="">日を選択</option>';
+  for(let i=1;i<=31;i++)dSel.innerHTML+=`<option value="${i}">${i}日</option>`;
+  document.getElementById('plan-name').value='';
+  document.getElementById('modal-add-plan').style.display='flex';
+  setTimeout(()=>document.getElementById('plan-name').focus(),100);
+}
+function savePlan(){
+  const name=document.getElementById('plan-name').value.trim();
+  if(!name){alert('内容を入力してください');return;}
+  const mo=document.getElementById('plan-month').value;
+  const d=document.getElementById('plan-day').value;
+  const now=new Date();
+  const year=now.getFullYear();
+  // 日付文字列（表示用）
+  const dateLabel=mo&&d?`${mo}/${d}`:mo?`${mo}月`:'';
+  // ストレージ用のdate（YYYY-MM-DD形式、月・日が選択されている場合）
+  const dateStr=mo&&d?`${year}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`:null;
+  if(!S.plans)S.plans=[];
+  S.plans.push({
+    id:'plan_'+Date.now(),
+    name,
+    dateLabel,
+    date:dateStr,
+    year,
+    month:mo?parseInt(mo)-1:now.getMonth()
+  });
+  saveState();
+  closeModal('modal-add-plan');
+  renderHome();
 }
 function delPlan(id){
   if(!S.plans)return;
