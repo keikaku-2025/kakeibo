@@ -194,6 +194,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
       <div class="sec-title">資産</div>
       <div id="home-assets"></div>
+      <div class="sec-title" style="display:flex;align-items:center;justify-content:space-between;">
+        今月の予定
+        <button onclick="openAddPlan()" style="background:none;border:1px solid var(--border);border-radius:8px;padding:3px 10px;font-size:12px;cursor:pointer;color:var(--muted);">+ 追加</button>
+      </div>
+      <div id="home-plans"></div>
       <div class="sec-title">今月の取引</div>
       <div id="home-cal-grid"></div>
       <div id="home-cal-detail"></div>
@@ -296,8 +301,11 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
       </div>
       <div id="gt-bank" style="display:none;">
         <div class="range-nav"><button onclick="chGraphOffset(1)">‹ 前へ</button><span id="bank-range-label"></span><button onclick="chGraphOffset(-1)">次へ ›</button></div>
+        <div class="sec-title">銀行口座別 残高推移</div>
         <div class="legend" id="bank-legend"></div>
-        <div class="chart-wrap" style="height:230px;"><canvas id="bankChart"></canvas></div>
+        <div class="chart-wrap" style="height:210px;"><canvas id="bankChart"></canvas></div>
+        <div class="sec-title">銀行合算 残高推移</div>
+        <div class="chart-wrap" style="height:180px;"><canvas id="bankTotalChart"></canvas></div>
       </div>
       <div id="gt-asset" style="display:none;">
         <div class="month-nav" style="margin-bottom:6px;"><button onclick="chMonth(-1)">‹</button><span class="month-label" id="ga-mlabel"></span><button onclick="chMonth(1)">›</button></div>
@@ -676,6 +684,8 @@ function renderHome(){
 
   // カレンダー描画
   renderHomeCalendar(txs);
+  // 今月の予定
+  renderHomePlans();
 }
 
 function toggleCardDetail(id){
@@ -901,72 +911,106 @@ function renderCardSummary(){
   const c=document.getElementById('card-summary-container');
   if(!cards.length){c.innerHTML='<div class="empty">カードが登録されていません</div>';return;}
   c.innerHTML=cards.map(card=>{
-    const pending=cardPendingTotal(card),thisMonth=cardMonthTotal(card,curY,curM);
+    const sp=cardSplit(card);
+    const pending=cardPendingTotal(card);
+    const thisMonth=cardMonthTotal(card,curY,curM);
     const linked=card.linkedAssetId?byId(card.linkedAssetId):null;
     const pointAmt=card.pendingPointAmt||0;
-    const actual=Math.max(0,pending-pointAmt);
+    const confirmedActual=Math.max(0,sp.confirmedTotal-pointAmt);
+    const payDateVal=card.nextPayDate||'';
     return `<div class="card-summary-item">
       <div class="cs-name"><i class="ti ti-credit-card"></i>${card.name}</div>
       <div class="cs-row"><span>締め日</span><span class="val">毎月${card.closeDay}日</span></div>
       <div class="cs-row"><span>支払日</span><span class="val">翌月${card.payDay}日</span></div>
       <div class="cs-row"><span>引落口座</span><span class="val">${linked?linked.name:'未設定'}</span></div>
       <div class="cs-row"><span>${curM+1}月締め分</span><span class="val">${fmt(thisMonth)}</span></div>
-      <div class="cs-row"><span>未払い計上合計</span><span class="val amber">${fmt(pending)}</span></div>
-      ${pending>0?`
+      <div class="cs-row"><span style="color:var(--red);">確定分（締め済み）</span><span class="val" style="color:var(--red);">${fmt(sp.confirmedTotal)}</span></div>
+      <div class="cs-row"><span style="color:var(--amber);">未確定分（締め前）</span><span class="val" style="color:var(--amber);">${fmt(sp.unconfirmedTotal)}</span></div>
+      ${sp.confirmedTotal>0?`
+      <!-- ポイント充当（確定分のみ） -->
       <div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:10px;">
-        <div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:8px;"><i class="ti ti-coin"></i> ポイント充当予定額</div>
+        <div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:8px;"><i class="ti ti-coin"></i> ポイント充当（確定分に対して）</div>
         <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
           <input type="number" id="point-input-${card.id}" value="${pointAmt||''}" placeholder="0" inputmode="numeric"
             style="flex:1;font-size:15px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;"
-            oninput="previewPointAmt(${card.id})">
-          <button onclick="savePointAmt(${card.id})" style="padding:9px 14px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;white-space:nowrap;">保存</button>
+            oninput="previewPointAmt(${card.id},${sp.confirmedTotal})">
+          <button onclick="savePointAmt(${card.id},${sp.confirmedTotal})" style="padding:9px 14px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">保存</button>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);">
+        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:4px;">
           <span>ポイント充当</span><span id="point-preview-${card.id}" style="color:var(--teal);font-weight:600;">${pointAmt?fmt(pointAmt):'—'}</span>
         </div>
-        <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;margin-top:4px;">
-          <span>実際の引落予定額</span><span style="color:var(--red);" id="actual-preview-${card.id}">${fmt(actual)}</span>
+        <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;">
+          <span>確定分の引落予定額</span><span style="color:var(--red);" id="actual-preview-${card.id}">${fmt(confirmedActual)}</span>
         </div>
       </div>
-      ${linked?`<button class="pay-btn" onclick="payCard(${card.id})">
-        ${linked.name}から ${fmt(actual)} を引き落とす${pointAmt>0?`<span style="font-size:11px;font-weight:400;"> （ポイント ${fmt(pointAmt)} 充当後）</span>`:''}
-      </button>`:''}
+      <!-- 引落予定日 -->
+      <div style="margin-top:10px;padding:12px;background:#fff;border:1px solid var(--border);border-radius:10px;">
+        <div style="font-size:12px;font-weight:600;margin-bottom:8px;"><i class="ti ti-calendar"></i> 引落予定日をカレンダーに登録</div>
+        <div style="display:flex;gap:8px;align-items:center;">
+          <input type="date" id="paydate-input-${card.id}" value="${payDateVal}"
+            style="flex:1;font-size:15px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;">
+          <button onclick="savePayDate(${card.id})" style="padding:9px 14px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">登録</button>
+        </div>
+        ${payDateVal?`<div style="font-size:12px;color:var(--muted);margin-top:6px;">登録済み：${payDateVal} に ${fmt(confirmedActual)} を引落予定</div>`:''}
+      </div>
       `:''}
     </div>`;
   }).join('');
 }
 
-function previewPointAmt(cardId){
-  const card=byId(cardId);if(!card)return;
-  const pending=cardPendingTotal(card);
-  const pt=Math.min(parseFloat(document.getElementById(`point-input-${cardId}`).value)||0,pending);
-  const actual=Math.max(0,pending-pt);
+function previewPointAmt(cardId, confirmedTotal){
+  const pt=Math.min(parseFloat(document.getElementById(`point-input-${cardId}`).value)||0, confirmedTotal);
+  const actual=Math.max(0,confirmedTotal-pt);
   const pEl=document.getElementById(`point-preview-${cardId}`);
   const aEl=document.getElementById(`actual-preview-${cardId}`);
   if(pEl)pEl.textContent=pt>0?fmt(pt):'—';
   if(aEl)aEl.textContent=fmt(actual);
 }
-
-function savePointAmt(cardId){
+function savePointAmt(cardId, confirmedTotal){
   const card=byId(cardId);if(!card)return;
-  const pending=cardPendingTotal(card);
-  const pt=Math.min(parseFloat(document.getElementById(`point-input-${cardId}`).value)||0,pending);
+  const pt=Math.min(parseFloat(document.getElementById(`point-input-${cardId}`).value)||0, confirmedTotal);
   card.pendingPointAmt=pt;
-  saveState();
-  renderCardSummary();
+  saveState();renderCardSummary();
 }
-
+function savePayDate(cardId){
+  const card=byId(cardId);if(!card)return;
+  const dateVal=document.getElementById(`paydate-input-${cardId}`).value;
+  if(!dateVal){alert('日付を入力してください');return;}
+  const sp=cardSplit(card);
+  const pointAmt=card.pendingPointAmt||0;
+  const actual=Math.max(0,sp.confirmedTotal-pointAmt);
+  card.nextPayDate=dateVal;card.nextPayAmount=actual;
+  saveState();renderCardSummary();
+  alert(`${dateVal} に ${fmt(actual)} の引落予定を登録しました`);
+}
+function checkAndProcessCardPayments(){
+  const today=todayStr();let processed=false;
+  S.assets.filter(a=>a.type==='credit').forEach(card=>{
+    if(!card.nextPayDate||card.nextPayDate!==today)return;
+    const linked=card.linkedAssetId?byId(card.linkedAssetId):null;
+    if(!linked)return;
+    const amount=card.nextPayAmount||0;if(amount<=0)return;
+    const already=S.transactions.some(t=>t.isCardPayment&&t.cardId===card.id&&t.date===today);
+    if(already)return;
+    const sp=cardSplit(card);sp.confirmed.forEach(t=>t.settled=true);
+    const pointAmt=card.pendingPointAmt||0;
+    linked.balance-=amount;
+    S.transactions.push({id:S.nextId++,date:today,type:'expense',cat:'カード引落',amount,assetId:linked.id,cardId:card.id,note:`${card.name}引落${pointAmt>0?`（ポイント充当 ${fmt(pointAmt)}）`:''}`,isCardPayment:true});
+    card.nextPayDate=null;card.nextPayAmount=null;card.pendingPointAmt=0;processed=true;
+  });
+  if(processed)saveState();
+}
 let payingCardId=null;
 function payCard(cardId){
   const card=byId(cardId),linked=card.linkedAssetId?byId(card.linkedAssetId):null;
-  const pending=cardPendingTotal(card);
-  if(!linked){alert('引落口座が設定されていません');return;}
-  if(pending<=0){alert('未払い残高はありません');return;}
+  const sp=cardSplit(card);
   const pointAmt=card.pendingPointAmt||0;
-  const actual=Math.max(0,pending-pointAmt);
+  const actual=Math.max(0,sp.confirmedTotal-pointAmt);
+  if(!linked){alert('引落口座が設定されていません');return;}
+  if(sp.confirmedTotal<=0){alert('確定済みの未払い残高はありません');return;}
   payingCardId=cardId;
   document.getElementById('pp-card-name').textContent=`${card.name}の引落処理`;
-  document.getElementById('pp-total').textContent=fmt(pending);
+  document.getElementById('pp-total').textContent=fmt(sp.confirmedTotal);
   document.getElementById('pp-linked-name').textContent=linked.name;
   document.getElementById('pp-point-amt').value=pointAmt||'';
   document.getElementById('pp-point-label').textContent=pointAmt?fmt(pointAmt):'¥0';
@@ -975,33 +1019,30 @@ function payCard(cardId){
 }
 function updatePointPreview(){
   const card=byId(payingCardId);if(!card)return;
-  const pending=cardPendingTotal(card);
-  const pointAmt=Math.min(parseFloat(document.getElementById('pp-point-amt').value)||0,pending);
-  const actual=Math.max(0,pending-pointAmt);
+  const sp=cardSplit(card);
+  const pointAmt=Math.min(parseFloat(document.getElementById('pp-point-amt').value)||0,sp.confirmedTotal);
+  const actual=Math.max(0,sp.confirmedTotal-pointAmt);
   document.getElementById('pp-point-label').textContent=fmt(pointAmt);
   document.getElementById('pp-actual-label').textContent=fmt(actual);
 }
 function executePayCard(){
   const card=byId(payingCardId);if(!card)return;
   const linked=card.linkedAssetId?byId(card.linkedAssetId):null;
-  const pending=cardPendingTotal(card);
-  const pointAmt=Math.min(parseFloat(document.getElementById('pp-point-amt').value)||0,pending);
-  const actual=Math.max(0,pending-pointAmt);
+  const sp=cardSplit(card);
+  const pointAmt=Math.min(parseFloat(document.getElementById('pp-point-amt').value)||0,sp.confirmedTotal);
+  const actual=Math.max(0,sp.confirmedTotal-pointAmt);
   if(!linked){alert('引落口座が設定されていません');return;}
-  if(!confirm(`${fmt(actual)} を${linked.name}から引き落とします。よろしいですか？${pointAmt>0?`\n（ポイント充当 ${fmt(pointAmt)}）`:''}`))return;
-  S.transactions.filter(t=>((t.assetId===card.id&&t.type==='expense')||(t.chargeCardId===card.id&&t.type==='charge'))&&!t.settled).forEach(t=>t.settled=true);
+  if(!confirm(`${fmt(actual)} を${linked.name}から引き落とします。${pointAmt>0?`\n（ポイント充当 ${fmt(pointAmt)}）`:''}`))return;
+  sp.confirmed.forEach(t=>t.settled=true);
   linked.balance-=actual;
-  const date=todayStr();
   S.transactions.push({
-    id:S.nextId++,date,type:'expense',cat:'カード引落',
-    amount:actual,assetId:linked.id,
+    id:S.nextId++,date:todayStr(),type:'expense',cat:'カード引落',
+    amount:actual,assetId:linked.id,cardId:card.id,
     note:`${card.name}引落${pointAmt>0?`（ポイント充当 ${fmt(pointAmt)}）`:''}`,
     isCardPayment:true
   });
-  // ポイント充当額をリセット
-  card.pendingPointAmt=0;
-  saveState();
-  closeModal('modal-point-pay');
+  card.pendingPointAmt=0;card.nextPayDate=null;card.nextPayAmount=null;
+  saveState();closeModal('modal-point-pay');
   alert('引き落とし処理が完了しました');
   renderCardSummary();renderAssetsList();renderHome();
 }
@@ -1042,7 +1083,9 @@ function renderHomeCalendar(txs){
     const dateStr=`${curY}-${String(curM+1).padStart(2,'0')}-${String(d).padStart(2,'0')}`;
     const isToday=dateStr===today_,isSelected=calSelectedDate===dateStr;
     const dayTxs=dayMap[d]||[];
-    const dots=dayTxs.slice(0,4).map(t=>`<span class="cal-dot" style="background:${t.type==='income'?'var(--green)':t.type==='charge'?'var(--teal)':t.type==='transfer'?'var(--blue)':'var(--red)'}"></span>`).join('');
+    // カード引落予定ドット
+    const cardPayDots=S.assets.filter(a=>a.type==='credit'&&a.nextPayDate===dateStr).map(()=>`<span class="cal-dot" style="background:var(--purple)"></span>`).join('');
+    const dots=dayTxs.slice(0,3).map(t=>`<span class="cal-dot" style="background:${t.type==='income'?'var(--green)':t.type==='charge'?'var(--teal)':t.type==='transfer'?'var(--blue)':'var(--red)'}"></span>`).join('')+cardPayDots;
     const dayExp=dayTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
     const expLabel=dayExp>0?`<div class="cal-exp-amt">${dayExp>=10000?(dayExp/10000).toFixed(1)+'万':dayExp.toLocaleString('ja-JP')}</div>`:'';
     html+=`<div class="cal-cell${isToday?' today':''}${isSelected?' selected':''}" onclick="selectCalDay('${dateStr}')">
@@ -1295,12 +1338,43 @@ function renderBudgetVsActual(){
   html+='</div>';
   el.innerHTML=html;
 }
+let bankTotalChart=null;
 function renderBankChart(){
   const banks=S.assets.filter(a=>a.type==='bank'),months=getMonthRange(6);
   document.getElementById('bank-range-label').textContent=months[0].label+'〜'+months[5].label;
-  document.getElementById('bank-legend').innerHTML=banks.length?banks.map((b,i)=>`<span class="legend-item"><span class="legend-dot" style="background:${BANK_COLORS[i%BANK_COLORS.length]}"></span>${b.name}</span>`).join(''):'<span style="font-size:12px;color:var(--muted);">銀行口座が登録されていません</span>';
-  if(bankChart)bankChart.destroy();if(!banks.length)return;
-  bankChart=new Chart(document.getElementById('bankChart'),{type:'line',data:{labels:months.map(m=>m.label),datasets:banks.map((bank,i)=>({label:bank.name,data:months.map(mo=>calcBankBalanceAt(bank,mo.y,mo.m)),borderColor:BANK_COLORS[i%BANK_COLORS.length],backgroundColor:BANK_COLORS[i%BANK_COLORS.length]+'22',tension:.3,fill:true,pointRadius:4}))},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{y:{ticks:{callback:v=>'¥'+Math.round(v).toLocaleString('ja-JP')}}}}});
+  document.getElementById('bank-legend').innerHTML=banks.length
+    ?banks.map((b,i)=>`<span class="legend-item"><span class="legend-dot" style="background:${BANK_COLORS[i%BANK_COLORS.length]}"></span>${b.name}</span>`).join('')
+    :'<span style="font-size:12px;color:var(--muted);">銀行口座が登録されていません</span>';
+  if(bankChart)bankChart.destroy();
+  if(!banks.length){if(bankTotalChart)bankTotalChart.destroy();return;}
+  // 個別グラフ
+  bankChart=new Chart(document.getElementById('bankChart'),{
+    type:'line',
+    data:{labels:months.map(m=>m.label),datasets:banks.map((bank,i)=>({
+      label:bank.name,
+      data:months.map(mo=>calcBankBalanceAt(bank,mo.y,mo.m)),
+      borderColor:BANK_COLORS[i%BANK_COLORS.length],
+      backgroundColor:BANK_COLORS[i%BANK_COLORS.length]+'22',
+      tension:.3,fill:true,pointRadius:4
+    }))},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{ticks:{callback:v=>'¥'+Math.round(v).toLocaleString('ja-JP')}}}}
+  });
+  // 銀行合算グラフ
+  const totalData=months.map(mo=>banks.reduce((s,bank)=>s+calcBankBalanceAt(bank,mo.y,mo.m),0));
+  if(bankTotalChart)bankTotalChart.destroy();
+  bankTotalChart=new Chart(document.getElementById('bankTotalChart'),{
+    type:'line',
+    data:{labels:months.map(m=>m.label),datasets:[{
+      label:'銀行合算',
+      data:totalData,
+      borderColor:'#1a1a1a',
+      backgroundColor:'rgba(26,26,26,0.08)',
+      tension:.3,fill:true,pointRadius:5,pointBackgroundColor:'#1a1a1a'
+    }]},
+    options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},
+      scales:{y:{ticks:{callback:v=>'¥'+Math.round(v).toLocaleString('ja-JP')}}}}
+  });
 }
 function renderAssetSummary(){
   document.getElementById('ga-mlabel').textContent=curY+'年'+(curM+1)+'月';
@@ -1583,8 +1657,57 @@ function delSub(id){
 
 function resetAll(){localStorage.removeItem(STORAGE_KEY);S=defaultState();saveState();renderHome();}
 
-// 起動時：サブスク自動生成チェック → ホーム表示
+// ========== 今月の予定 ==========
+function renderHomePlans(){
+  if(!S.plans)S.plans=[];
+  const el=document.getElementById('home-plans');if(!el)return;
+  const now=new Date(),y=now.getFullYear(),m=now.getMonth();
+  const monthPlans=S.plans.filter(p=>{
+    if(!p.date)return p.year===y&&p.month===m;
+    const d=new Date(p.date+'T00:00:00');return d.getFullYear()===y&&d.getMonth()===m;
+  });
+  // カード引落予定も表示
+  const cardPlans=S.assets.filter(a=>a.type==='credit'&&a.nextPayDate).map(a=>{
+    const d=new Date(a.nextPayDate+'T00:00:00');
+    return d.getFullYear()===y&&d.getMonth()===m?{
+      id:'card_'+a.id,label:`${a.name}引落`,amount:a.nextPayAmount||0,date:a.nextPayDate,isCard:true
+    }:null;
+  }).filter(Boolean);
+  const all=[...monthPlans,...cardPlans].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
+  if(!all.length){el.innerHTML='<div class="empty" style="padding:12px 0;">予定はありません</div>';return;}
+  el.innerHTML='<div class="tx-list">'+all.map(p=>`
+    <div class="tx-item">
+      <div class="tx-left">
+        <div class="tx-name">${p.label||p.name}${p.isCard?'<span class="badge" style="background:#EEEDFE;color:var(--purple);">引落予定</span>':''}</div>
+        <div class="tx-sub">${p.date||'今月'}</div>
+      </div>
+      <div class="tx-right">
+        ${p.amount?`<span class="tx-amt exp">-${fmt(p.amount)}</span>`:''}
+        ${!p.isCard?`<button class="icon-btn del" onclick="delPlan('${p.id}')"><i class="ti ti-x"></i></button>`:''}
+      </div>
+    </div>`).join('')+'</div>';
+}
+let editPlanModal=false;
+function openAddPlan(){
+  const name=prompt('予定の内容を入力してください（例：旅行費用）');
+  if(!name)return;
+  const amtStr=prompt('予算額（円）を入力してください（任意、スキップはキャンセル）');
+  const amount=amtStr?parseFloat(amtStr)||0:0;
+  const dateStr=prompt('日付を入力してください（例：2025-06-15、スキップはキャンセル）');
+  if(!S.plans)S.plans=[];
+  const now=new Date();
+  S.plans.push({id:'plan_'+Date.now(),name,amount,date:dateStr||null,year:now.getFullYear(),month:now.getMonth()});
+  saveState();renderHome();
+}
+function delPlan(id){
+  if(!S.plans)return;
+  S.plans=S.plans.filter(p=>p.id!==id);
+  saveState();renderHome();
+}
+
+// 起動時：サブスク自動生成 → カード自動引落 → ホーム表示
 checkAndGenerateSubscriptions();
+checkAndProcessCardPayments();
 renderHome();
 </script>
 </body>
