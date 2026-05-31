@@ -1688,73 +1688,66 @@ function resetAll(){localStorage.removeItem(STORAGE_KEY);S=defaultState();saveSt
 function renderHomePlans(){
   if(!S.plans)S.plans=[];
   const el=document.getElementById('home-plans');if(!el)return;
-  const now=new Date(),y=now.getFullYear(),m=now.getMonth();
   const monthPlans=S.plans.filter(p=>{
-    if(!p.date)return p.year===y&&p.month===m;
-    const d=new Date(p.date+'T00:00:00');return d.getFullYear()===y&&d.getMonth()===m;
+    if(p.date){
+      const d=new Date(p.date+'T00:00:00');
+      return d.getFullYear()===curY&&d.getMonth()===curM;
+    }
+    return p.year===curY&&p.month===curM;
   });
-  // カード引落予定も表示
+  // カード引落予定も表示（当月分のみ）
   const cardPlans=S.assets.filter(a=>a.type==='credit'&&a.nextPayDate).map(a=>{
     const d=new Date(a.nextPayDate+'T00:00:00');
-    return d.getFullYear()===y&&d.getMonth()===m?{
-      id:'card_'+a.id,label:`${a.name}引落`,amount:a.nextPayAmount||0,date:a.nextPayDate,isCard:true
-    }:null;
+    if(d.getFullYear()!==curY||d.getMonth()!==curM)return null;
+    return{id:'card_'+a.id,label:`${a.name}引落`,amount:a.nextPayAmount||0,date:a.nextPayDate,dateLabel:a.nextPayDate.slice(5).replace('-','/'),isCard:true};
   }).filter(Boolean);
   const all=[...monthPlans,...cardPlans].sort((a,b)=>(a.date||'').localeCompare(b.date||''));
-  if(!all.length){el.innerHTML='<div class="empty" style="padding:12px 0;">予定はありません</div>';return;}
+  if(!all.length){el.innerHTML='<div class="empty" style="padding:12px 0;font-size:13px;color:var(--muted);">予定はありません</div>';return;}
   el.innerHTML='<div class="tx-list">'+all.map(p=>`
     <div class="tx-item">
       <div class="tx-left">
         <div class="tx-name">${p.label||p.name}${p.isCard?'<span class="badge" style="background:#EEEDFE;color:var(--purple);">引落予定</span>':''}</div>
-        <div class="tx-sub">${p.dateLabel||p.date||'今月'}</div>
+        <div class="tx-sub">${p.dateLabel||'日付未定'}</div>
       </div>
       <div class="tx-right">
-        ${p.isCard&&p.amount?`<span class="tx-amt exp">-${fmt(p.amount)}</span>`:''}
+        ${p.isCard&&p.amount?`<span class="tx-amt exp" style="font-size:13px;">-${fmt(p.amount)}</span>`:''}
         ${!p.isCard?`<button class="icon-btn del" onclick="delPlan('${p.id}')"><i class="ti ti-x"></i></button>`:''}
       </div>
     </div>`).join('')+'</div>';
 }
+
 function openAddPlan(){
-  const now=new Date();
-  // 月セレクト
+  // 選択肢を毎回リセット（innerHTML+=の重複防止）
   const mSel=document.getElementById('plan-month');
-  mSel.innerHTML='<option value="">月を選択</option>';
-  for(let i=1;i<=12;i++)mSel.innerHTML+=`<option value="${i}"${i===now.getMonth()+1?' selected':''}>${i}月</option>`;
-  // 日セレクト
   const dSel=document.getElementById('plan-day');
-  dSel.innerHTML='<option value="">日を選択</option>';
+  mSel.innerHTML='<option value="">月（任意）</option>';
+  for(let i=1;i<=12;i++)mSel.innerHTML+=`<option value="${i}"${i===curM+1?' selected':''}>${i}月</option>`;
+  dSel.innerHTML='<option value="">日（任意）</option>';
   for(let i=1;i<=31;i++)dSel.innerHTML+=`<option value="${i}">${i}日</option>`;
   document.getElementById('plan-name').value='';
   document.getElementById('modal-add-plan').style.display='flex';
-  setTimeout(()=>document.getElementById('plan-name').focus(),100);
+  // iOSでのスクロール固着防止のためfocusは呼ばない
 }
+
 function savePlan(){
   const name=document.getElementById('plan-name').value.trim();
   if(!name){alert('内容を入力してください');return;}
   const mo=document.getElementById('plan-month').value;
   const d=document.getElementById('plan-day').value;
-  const now=new Date();
-  const year=now.getFullYear();
-  // 日付文字列（表示用）
+  const year=curY;
+  const month=mo?parseInt(mo)-1:curM;
   const dateLabel=mo&&d?`${mo}/${d}`:mo?`${mo}月`:'';
-  // ストレージ用のdate（YYYY-MM-DD形式、月・日が選択されている場合）
   const dateStr=mo&&d?`${year}-${String(mo).padStart(2,'0')}-${String(d).padStart(2,'0')}`:null;
   if(!S.plans)S.plans=[];
-  S.plans.push({
-    id:'plan_'+Date.now(),
-    name,
-    dateLabel,
-    date:dateStr,
-    year,
-    month:mo?parseInt(mo)-1:now.getMonth()
-  });
+  S.plans.push({id:'plan_'+Date.now(),name,dateLabel,date:dateStr,year,month});
   saveState();
   closeModal('modal-add-plan');
   renderHome();
 }
+
 function delPlan(id){
   if(!S.plans)return;
-  S.plans=S.plans.filter(p=>p.id!==id);
+  S.plans=S.plans.filter(p=>String(p.id)!==String(id));
   saveState();renderHome();
 }
 
