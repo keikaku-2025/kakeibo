@@ -446,40 +446,6 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
   </div>
 </div>
 
-<!-- ポイント充当モーダル -->
-<div class="modal-overlay" id="modal-point-pay" style="display:none;" onclick="closeModal('modal-point-pay')">
-  <div class="modal-box" onclick="event.stopPropagation()">
-    <div class="modal-title">引落処理・ポイント充当</div>
-    <div style="background:var(--bg);border-radius:10px;padding:12px;margin-bottom:14px;">
-      <div style="font-size:12px;color:var(--muted);margin-bottom:4px;" id="pp-card-name"></div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
-        <span>未払い合計</span><span id="pp-total" style="font-weight:600;"></span>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:13px;">
-        <span>引落口座</span><span id="pp-linked-name" style="font-weight:500;"></span>
-      </div>
-    </div>
-    <div class="form-group">
-      <label>ポイント充当額（円）<span style="font-size:11px;color:var(--muted);margin-left:4px;">変更する場合はここで調整</span></label>
-      <input type="number" id="pp-point-amt" placeholder="0" min="0" inputmode="numeric" oninput="updatePointPreview()">
-    </div>
-    <div style="background:#E6FAF8;border-radius:10px;padding:12px;margin-bottom:14px;">
-      <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:4px;">
-        <span style="color:var(--teal);">ポイント充当</span>
-        <span id="pp-point-label" style="font-weight:600;color:var(--teal);">¥0</span>
-      </div>
-      <div style="display:flex;justify-content:space-between;font-size:15px;font-weight:700;">
-        <span>実際の引落額</span>
-        <span id="pp-actual-label" style="color:var(--red);"></span>
-      </div>
-    </div>
-    <div class="modal-actions">
-      <button class="btn btn-secondary" onclick="closeModal('modal-point-pay')">キャンセル</button>
-      <button class="btn btn-primary" onclick="executePayCard()">引き落とす</button>
-    </div>
-  </div>
-</div>
-
 <!-- カテゴリ編集モーダル -->
 <div class="modal-overlay" id="modal-edit-cat" style="display:none;" onclick="closeModal('modal-edit-cat')">
   <div class="modal-box" onclick="event.stopPropagation()">
@@ -674,36 +640,17 @@ function renderHome(){
     group.forEach(a=>{
       const isCard=a.type==='credit';
       if(isCard){
-        const sp=cardSplit(a);
-        const total=sp.confirmedTotal+sp.unconfirmedTotal;
-        const closeLabel=`締め日:毎月${a.closeDay}日`;
+        const pending=cardPendingTotal(a);
+        const payDate=a.nextPayDate;
+        const payAmt=a.nextPayAmount;
         html+=`<div class="asset-card-wrap">
-          <div class="asset-row" onclick="toggleCardDetail('card-detail-${a.id}')" style="cursor:pointer;">
+          <div class="asset-row">
             <div>
-              <div class="aname">${a.name} <span style="font-size:10px;color:var(--muted);">${closeLabel}</span></div>
-              <div class="apending">未払い計上合計 <i class="ti ti-chevron-down" style="font-size:11px;"></i></div>
+              <div class="aname">${a.name}</div>
+              <div class="apending">未払い計上 ${fmt(pending)}</div>
+              ${payDate?`<div style="font-size:11px;color:var(--purple);margin-top:2px;">引落予定 ${payDate} ${fmt(payAmt)}</div>`:''}
             </div>
-            <div class="abal" style="color:var(--amber)">${fmt(total)}</div>
-          </div>
-          <div id="card-detail-${a.id}" style="display:none;border-top:1px solid var(--border);padding:10px 14px;background:#fafaf8;">
-            <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:6px;">
-              <span style="font-size:12px;font-weight:600;color:var(--red);">確定分（締め済み）</span>
-              <span style="font-size:13px;font-weight:700;color:var(--red);">${fmt(sp.confirmedTotal)}</span>
-            </div>
-            ${sp.confirmed.length?sp.confirmed.map(t=>`
-              <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border);">
-                <span style="color:var(--muted);">${t.date.slice(5)} ${t.note||t.cat}</span>
-                <span>${fmt(t.amount)}</span>
-              </div>`).join(''):`<div style="font-size:12px;color:var(--muted);padding:2px 0;">なし</div>`}
-            <div style="display:flex;justify-content:space-between;align-items:center;margin:10px 0 6px;">
-              <span style="font-size:12px;font-weight:600;color:var(--amber);">未確定分（締め前）</span>
-              <span style="font-size:13px;font-weight:700;color:var(--amber);">${fmt(sp.unconfirmedTotal)}</span>
-            </div>
-            ${sp.unconfirmed.length?sp.unconfirmed.map(t=>`
-              <div style="display:flex;justify-content:space-between;font-size:12px;padding:3px 0;border-bottom:1px solid var(--border);">
-                <span style="color:var(--muted);">${t.date.slice(5)} ${t.note||t.cat}</span>
-                <span>${fmt(t.amount)}</span>
-              </div>`).join(''):`<div style="font-size:12px;color:var(--muted);padding:2px 0;">なし</div>`}
+            <div class="abal" style="color:var(--amber)">${fmt(pending)}</div>
           </div>
         </div>`;
       } else {
@@ -718,12 +665,6 @@ function renderHome(){
   renderHomeCalendar(txs);
   // 今月の予定
   renderHomePlans();
-}
-
-function toggleCardDetail(id){
-  const el=document.getElementById(id);
-  if(!el)return;
-  el.style.display=el.style.display==='none'?'':'none';
 }
 
 function txItemHtml(t){
@@ -943,78 +884,64 @@ function renderCardSummary(){
   const c=document.getElementById('card-summary-container');
   if(!cards.length){c.innerHTML='<div class="empty">カードが登録されていません</div>';return;}
   c.innerHTML=cards.map(card=>{
-    const sp=cardSplit(card);
-    const pending=cardPendingTotal(card);
-    const thisMonth=cardMonthTotal(card,curY,curM);
     const linked=card.linkedAssetId?byId(card.linkedAssetId):null;
-    const pointAmt=card.pendingPointAmt||0;
-    const confirmedActual=Math.max(0,sp.confirmedTotal-pointAmt);
+    const thisMonth=cardMonthTotal(card,curY,curM);
     const payDateVal=card.nextPayDate||'';
+    const payAmtVal=card.nextPayAmount!=null?card.nextPayAmount:'';
     return `<div class="card-summary-item">
       <div class="cs-name"><i class="ti ti-credit-card"></i>${card.name}</div>
       <div class="cs-row"><span>締め日</span><span class="val">毎月${card.closeDay}日</span></div>
       <div class="cs-row"><span>支払日</span><span class="val">翌月${card.payDay}日</span></div>
       <div class="cs-row"><span>引落口座</span><span class="val">${linked?linked.name:'未設定'}</span></div>
-      <div class="cs-row"><span>${curM+1}月締め分</span><span class="val">${fmt(thisMonth)}</span></div>
-      <div class="cs-row"><span style="color:var(--red);">確定分（締め済み）</span><span class="val" style="color:var(--red);">${fmt(sp.confirmedTotal)}</span></div>
-      <div class="cs-row"><span style="color:var(--amber);">未確定分（締め前）</span><span class="val" style="color:var(--amber);">${fmt(sp.unconfirmedTotal)}</span></div>
-      ${sp.confirmedTotal>0?`
-      <!-- ポイント充当（確定分のみ） -->
-      <div style="margin-top:12px;padding:12px;background:var(--bg);border-radius:10px;">
-        <div style="font-size:12px;font-weight:600;color:var(--teal);margin-bottom:8px;"><i class="ti ti-coin"></i> ポイント充当（確定分に対して）</div>
-        <div style="display:flex;gap:8px;align-items:center;margin-bottom:8px;">
-          <input type="number" id="point-input-${card.id}" value="${pointAmt||''}" placeholder="0" inputmode="numeric"
-            style="flex:1;font-size:15px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;background:#fff;"
-            oninput="previewPointAmt(${card.id},${sp.confirmedTotal})">
-          <button onclick="savePointAmt(${card.id},${sp.confirmedTotal})" style="padding:9px 14px;background:var(--teal);color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">保存</button>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:13px;color:var(--muted);margin-bottom:4px;">
-          <span>ポイント充当</span><span id="point-preview-${card.id}" style="color:var(--teal);font-weight:600;">${pointAmt?fmt(pointAmt):'—'}</span>
-        </div>
-        <div style="display:flex;justify-content:space-between;font-size:14px;font-weight:700;">
-          <span>確定分の引落予定額</span><span style="color:var(--red);" id="actual-preview-${card.id}">${fmt(confirmedActual)}</span>
-        </div>
-      </div>
-      <!-- 引落予定日 -->
-      <div style="margin-top:10px;padding:12px;background:#fff;border:1px solid var(--border);border-radius:10px;">
-        <div style="font-size:12px;font-weight:600;margin-bottom:8px;"><i class="ti ti-calendar"></i> 引落予定日をカレンダーに登録</div>
-        <div style="display:flex;gap:8px;align-items:center;">
+      <div class="cs-row"><span>${curM+1}月締め分（参考）</span><span class="val">${fmt(thisMonth)}</span></div>
+
+      <div style="margin-top:14px;padding:12px;background:var(--bg);border-radius:10px;">
+        <div style="font-size:12px;font-weight:600;margin-bottom:10px;"><i class="ti ti-calendar-due"></i> 引落予定を登録</div>
+        <div class="form-group" style="margin-bottom:10px;">
+          <label>引落予定日</label>
           <input type="date" id="paydate-input-${card.id}" value="${payDateVal}"
-            style="flex:1;font-size:15px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;">
-          <button onclick="savePayDate(${card.id})" style="padding:9px 14px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">登録</button>
+            style="font-size:15px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;width:100%;background:#fff;">
         </div>
-        ${payDateVal?`<div style="font-size:12px;color:var(--muted);margin-top:6px;">登録済み：${payDateVal} に ${fmt(confirmedActual)} を引落予定</div>`:''}
+        <div class="form-group" style="margin-bottom:10px;">
+          <label>引落金額（円）<span style="font-size:11px;color:var(--muted);margin-left:4px;">実際の請求額を入力</span></label>
+          <input type="number" id="payamt-input-${card.id}" value="${payAmtVal}" placeholder="0" inputmode="numeric"
+            style="font-size:15px;padding:9px 12px;border:1px solid var(--border);border-radius:8px;width:100%;background:#fff;">
+        </div>
+        ${payDateVal&&payAmtVal!==''?`
+        <div style="display:flex;justify-content:space-between;font-size:13px;margin-bottom:10px;padding:8px 10px;background:#fff;border-radius:8px;border:1px solid var(--border);">
+          <span style="color:var(--muted);">登録済み</span>
+          <span style="font-weight:600;">${payDateVal} に ${fmt(payAmtVal)}</span>
+        </div>`:''}
+        <div style="display:flex;gap:8px;">
+          <button onclick="savePayDate(${card.id})" style="flex:1;padding:10px;background:#1a1a1a;color:#fff;border:none;border-radius:8px;font-size:13px;font-weight:600;cursor:pointer;">登録する</button>
+          ${payDateVal?`<button onclick="clearPayDate(${card.id})" style="padding:10px 14px;background:#fff;color:var(--red);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;">取消</button>`:''}
+        </div>
       </div>
-      `:''}
     </div>`;
   }).join('');
 }
 
-function previewPointAmt(cardId, confirmedTotal){
-  const pt=Math.min(parseFloat(document.getElementById(`point-input-${cardId}`).value)||0, confirmedTotal);
-  const actual=Math.max(0,confirmedTotal-pt);
-  const pEl=document.getElementById(`point-preview-${cardId}`);
-  const aEl=document.getElementById(`actual-preview-${cardId}`);
-  if(pEl)pEl.textContent=pt>0?fmt(pt):'—';
-  if(aEl)aEl.textContent=fmt(actual);
-}
-function savePointAmt(cardId, confirmedTotal){
-  const card=byId(cardId);if(!card)return;
-  const pt=Math.min(parseFloat(document.getElementById(`point-input-${cardId}`).value)||0, confirmedTotal);
-  card.pendingPointAmt=pt;
-  saveState();renderCardSummary();
-}
 function savePayDate(cardId){
   const card=byId(cardId);if(!card)return;
   const dateVal=document.getElementById(`paydate-input-${cardId}`).value;
-  if(!dateVal){alert('日付を入力してください');return;}
-  const sp=cardSplit(card);
-  const pointAmt=card.pendingPointAmt||0;
-  const actual=Math.max(0,sp.confirmedTotal-pointAmt);
-  card.nextPayDate=dateVal;card.nextPayAmount=actual;
-  saveState();renderCardSummary();
-  alert(`${dateVal} に ${fmt(actual)} の引落予定を登録しました`);
+  const amtVal=document.getElementById(`payamt-input-${cardId}`).value;
+  if(!dateVal){alert('引落予定日を入力してください');return;}
+  if(!amtVal||parseFloat(amtVal)<=0){alert('引落金額を入力してください');return;}
+  card.nextPayDate=dateVal;
+  card.nextPayAmount=parseFloat(amtVal);
+  saveState();
+  renderCardSummary();
+  renderHome();
+  alert(`${dateVal} に ${fmt(card.nextPayAmount)} の引落予定を登録しました`);
 }
+
+function clearPayDate(cardId){
+  const card=byId(cardId);if(!card)return;
+  if(!confirm('引落予定を取り消しますか？'))return;
+  card.nextPayDate=null;card.nextPayAmount=null;
+  saveState();renderCardSummary();renderHome();
+}
+
 function checkAndProcessCardPayments(){
   const today=todayStr();let processed=false;
   S.assets.filter(a=>a.type==='credit').forEach(card=>{
@@ -1022,61 +949,20 @@ function checkAndProcessCardPayments(){
     const linked=card.linkedAssetId?byId(card.linkedAssetId):null;
     if(!linked)return;
     const amount=card.nextPayAmount||0;if(amount<=0)return;
+    // 同日に既に処理済みか確認
     const already=S.transactions.some(t=>t.isCardPayment&&t.cardId===card.id&&t.date===today);
     if(already)return;
-    const sp=cardSplit(card);sp.confirmed.forEach(t=>t.settled=true);
-    const pointAmt=card.pendingPointAmt||0;
+    // 銀行から引落
     linked.balance-=amount;
-    S.transactions.push({id:S.nextId++,date:today,type:'expense',cat:'カード引落',amount,assetId:linked.id,cardId:card.id,note:`${card.name}引落${pointAmt>0?`（ポイント充当 ${fmt(pointAmt)}）`:''}`,isCardPayment:true});
-    card.nextPayDate=null;card.nextPayAmount=null;card.pendingPointAmt=0;processed=true;
+    S.transactions.push({
+      id:S.nextId++,date:today,type:'expense',cat:'カード引落',
+      amount,assetId:linked.id,cardId:card.id,
+      note:`${card.name}引落`,isCardPayment:true
+    });
+    card.nextPayDate=null;card.nextPayAmount=null;
+    processed=true;
   });
   if(processed)saveState();
-}
-let payingCardId=null;
-function payCard(cardId){
-  const card=byId(cardId),linked=card.linkedAssetId?byId(card.linkedAssetId):null;
-  const sp=cardSplit(card);
-  const pointAmt=card.pendingPointAmt||0;
-  const actual=Math.max(0,sp.confirmedTotal-pointAmt);
-  if(!linked){alert('引落口座が設定されていません');return;}
-  if(sp.confirmedTotal<=0){alert('確定済みの未払い残高はありません');return;}
-  payingCardId=cardId;
-  document.getElementById('pp-card-name').textContent=`${card.name}の引落処理`;
-  document.getElementById('pp-total').textContent=fmt(sp.confirmedTotal);
-  document.getElementById('pp-linked-name').textContent=linked.name;
-  document.getElementById('pp-point-amt').value=pointAmt||'';
-  document.getElementById('pp-point-label').textContent=pointAmt?fmt(pointAmt):'¥0';
-  document.getElementById('pp-actual-label').textContent=fmt(actual);
-  document.getElementById('modal-point-pay').style.display='flex';
-}
-function updatePointPreview(){
-  const card=byId(payingCardId);if(!card)return;
-  const sp=cardSplit(card);
-  const pointAmt=Math.min(parseFloat(document.getElementById('pp-point-amt').value)||0,sp.confirmedTotal);
-  const actual=Math.max(0,sp.confirmedTotal-pointAmt);
-  document.getElementById('pp-point-label').textContent=fmt(pointAmt);
-  document.getElementById('pp-actual-label').textContent=fmt(actual);
-}
-function executePayCard(){
-  const card=byId(payingCardId);if(!card)return;
-  const linked=card.linkedAssetId?byId(card.linkedAssetId):null;
-  const sp=cardSplit(card);
-  const pointAmt=Math.min(parseFloat(document.getElementById('pp-point-amt').value)||0,sp.confirmedTotal);
-  const actual=Math.max(0,sp.confirmedTotal-pointAmt);
-  if(!linked){alert('引落口座が設定されていません');return;}
-  if(!confirm(`${fmt(actual)} を${linked.name}から引き落とします。${pointAmt>0?`\n（ポイント充当 ${fmt(pointAmt)}）`:''}`))return;
-  sp.confirmed.forEach(t=>t.settled=true);
-  linked.balance-=actual;
-  S.transactions.push({
-    id:S.nextId++,date:todayStr(),type:'expense',cat:'カード引落',
-    amount:actual,assetId:linked.id,cardId:card.id,
-    note:`${card.name}引落${pointAmt>0?`（ポイント充当 ${fmt(pointAmt)}）`:''}`,
-    isCardPayment:true
-  });
-  card.pendingPointAmt=0;card.nextPayDate=null;card.nextPayAmount=null;
-  saveState();closeModal('modal-point-pay');
-  alert('引き落とし処理が完了しました');
-  renderCardSummary();renderAssetsList();renderHome();
 }
 function delAsset(id){if(!confirm('この資産を削除しますか？'))return;S.assets=S.assets.filter(a=>a.id!==id);saveState();renderAssets();}
 function onNewAssetType(){
