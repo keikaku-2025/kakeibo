@@ -643,14 +643,44 @@ function renderHome(){
         const pending=cardPendingTotal(a);
         const payDate=a.nextPayDate;
         const payAmt=a.nextPayAmount;
+        // 全カード取引を日付順（新しい順）で取得
+        const cardTxs=S.transactions.filter(t=>{
+          if(t.isCardPayment)return false;
+          return (t.assetId===a.id&&t.type==='expense')||(t.chargeCardId===a.id&&t.type==='charge');
+        }).sort((a,b)=>b.date.localeCompare(a.date));
+        const pendingTxs=cardTxs.filter(t=>!t.settled);
+        const settledTxs=cardTxs.filter(t=>t.settled);
         html+=`<div class="asset-card-wrap">
-          <div class="asset-row">
+          <div class="asset-row" onclick="toggleCardDetail('card-detail-${a.id}')" style="cursor:pointer;">
             <div>
-              <div class="aname">${a.name}</div>
-              <div class="apending">未払い計上 ${fmt(pending)}</div>
+              <div class="aname">${a.name} <i class="ti ti-chevron-down" id="chevron-${a.id}" style="font-size:12px;color:var(--muted);transition:transform .2s;"></i></div>
+              <div class="apending">未払い ${fmt(pending)}（${pendingTxs.length}件）</div>
               ${payDate?`<div style="font-size:11px;color:var(--purple);margin-top:2px;">引落予定 ${payDate} ${fmt(payAmt)}</div>`:''}
             </div>
             <div class="abal" style="color:var(--amber)">${fmt(pending)}</div>
+          </div>
+          <div id="card-detail-${a.id}" style="display:none;border-top:1px solid var(--border);background:#fafaf8;">
+            ${cardTxs.length?`
+              ${pendingTxs.length?`<div style="font-size:11px;font-weight:600;color:var(--muted);padding:8px 14px 4px;letter-spacing:.3px;">未払い（${pendingTxs.length}件）</div>`:''}
+              ${pendingTxs.map(t=>`
+                <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border);">
+                  <div style="min-width:0;flex:1;">
+                    <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.note||t.cat}</div>
+                    <div style="font-size:11px;color:var(--muted);">${t.date} · ${t.cat}</div>
+                  </div>
+                  <span style="font-size:14px;font-weight:700;color:var(--red);flex-shrink:0;margin-left:8px;">${fmt(t.amount)}</span>
+                </div>`).join('')}
+              ${settledTxs.length?`
+                <div style="font-size:11px;font-weight:600;color:var(--muted);padding:8px 14px 4px;letter-spacing:.3px;">支払済み（${settledTxs.length}件）</div>
+                ${settledTxs.map(t=>`
+                  <div style="display:flex;justify-content:space-between;align-items:center;padding:9px 14px;border-bottom:1px solid var(--border);opacity:.6;">
+                    <div style="min-width:0;flex:1;">
+                      <div style="font-size:13px;font-weight:500;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${t.note||t.cat}</div>
+                      <div style="font-size:11px;color:var(--muted);">${t.date} · ${t.cat}</div>
+                    </div>
+                    <span style="font-size:14px;font-weight:700;color:var(--muted);flex-shrink:0;margin-left:8px;">${fmt(t.amount)}</span>
+                  </div>`).join('')}`:''}
+            `:`<div style="font-size:13px;color:var(--muted);padding:14px;text-align:center;">取引がありません</div>`}
           </div>
         </div>`;
       } else {
@@ -665,6 +695,16 @@ function renderHome(){
   renderHomeCalendar(txs);
   // 今月の予定
   renderHomePlans();
+}
+
+function toggleCardDetail(id){
+  const el=document.getElementById(id);if(!el)return;
+  const isOpen=el.style.display!=='none';
+  el.style.display=isOpen?'none':'';
+  // シェブロンを回転
+  const cardId=id.replace('card-detail-','');
+  const ch=document.getElementById('chevron-'+cardId);
+  if(ch)ch.style.transform=isOpen?'':'rotate(180deg)';
 }
 
 function txItemHtml(t){
