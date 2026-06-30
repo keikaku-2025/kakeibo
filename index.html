@@ -624,8 +624,9 @@ function chMonth(d){curM+=d;if(curM>11){curM=0;curY++;}if(curM<0){curM=11;curY--
 function renderHome(){
   document.getElementById('mlabel').textContent=curY+'年'+(curM+1)+'月';
   const txs=monthTx(curY,curM);
-  const inc=txs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
-  const exp=txs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  // カード引落（isCardPayment）は家計簿の収支には含めない（カード利用時点で既に支出計上済みのため）
+  const inc=txs.filter(t=>t.type==='income'&&!t.isCardPayment).reduce((s,t)=>s+t.amount,0);
+  const exp=txs.filter(t=>t.type==='expense'&&!t.isCardPayment).reduce((s,t)=>s+t.amount,0);
   document.getElementById('h-inc').textContent=fmt(inc);
   document.getElementById('h-exp').textContent=fmt(exp);
   const be=document.getElementById('h-bal');be.textContent=fmt(inc-exp);be.className='mval '+((inc-exp)>=0?'pos':'neg');
@@ -1044,7 +1045,7 @@ function renderHomeCalendar(txs){
     // カード引落予定ドット
     const cardPayDots=S.assets.filter(a=>a.type==='credit'&&a.nextPayDate===dateStr).map(()=>`<span class="cal-dot" style="background:var(--purple)"></span>`).join('');
     const dots=dayTxs.slice(0,3).map(t=>`<span class="cal-dot" style="background:${t.type==='income'?'var(--green)':t.type==='charge'?'var(--teal)':t.type==='transfer'?'var(--blue)':'var(--red)'}"></span>`).join('')+cardPayDots;
-    const dayExp=dayTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+    const dayExp=dayTxs.filter(t=>t.type==='expense'&&!t.isCardPayment).reduce((s,t)=>s+t.amount,0);
     const expLabel=dayExp>0?`<div class="cal-exp-amt">${dayExp>=10000?(dayExp/10000).toFixed(1)+'万':dayExp.toLocaleString('ja-JP')}</div>`:'';
     html+=`<div class="cal-cell${isToday?' today':''}${isSelected?' selected':''}" onclick="selectCalDay('${dateStr}')">
       <div class="cal-num">${d}</div>
@@ -1070,7 +1071,7 @@ function renderHomeCalDetail(){
     el.innerHTML=`<div class="cal-day-detail"><div class="cal-day-detail-header">${calSelectedDate} — 取引なし</div></div>`;
     return;
   }
-  const dayExp=dayTxs.filter(t=>t.type==='expense').reduce((s,t)=>s+t.amount,0);
+  const dayExp=dayTxs.filter(t=>t.type==='expense'&&!t.isCardPayment).reduce((s,t)=>s+t.amount,0);
   const dayInc=dayTxs.filter(t=>t.type==='income').reduce((s,t)=>s+t.amount,0);
   const summary=[];
   if(dayExp>0)summary.push(`<span style="color:var(--red)">支出 ${fmt(dayExp)}</span>`);
@@ -1221,8 +1222,8 @@ function renderBarChart(){
   document.getElementById('gm-mlabel').textContent=curY+'年'+(curM+1)+'月';
   const months=getMonthRange(6);
   document.getElementById('bar-range-label').textContent=months[0].label+'〜'+months[5].label;
-  const incArr=months.map(mo=>S.transactions.filter(t=>{const d=new Date(t.date);return d.getFullYear()===mo.y&&d.getMonth()===mo.m&&t.type==='income';}).reduce((s,t)=>s+t.amount,0));
-  const expArr=months.map(mo=>S.transactions.filter(t=>{const d=new Date(t.date);return d.getFullYear()===mo.y&&d.getMonth()===mo.m&&t.type==='expense';}).reduce((s,t)=>s+t.amount,0));
+  const incArr=months.map(mo=>S.transactions.filter(t=>{const d=new Date(t.date);return d.getFullYear()===mo.y&&d.getMonth()===mo.m&&t.type==='income'&&!t.isCardPayment;}).reduce((s,t)=>s+t.amount,0));
+  const expArr=months.map(mo=>S.transactions.filter(t=>{const d=new Date(t.date);return d.getFullYear()===mo.y&&d.getMonth()===mo.m&&t.type==='expense'&&!t.isCardPayment;}).reduce((s,t)=>s+t.amount,0));
   if(barChart)barChart.destroy();
   barChart=new Chart(document.getElementById('barChart'),{type:'bar',data:{labels:months.map(m=>m.label),datasets:[{label:'収入',data:incArr,backgroundColor:'#1D9E75'},{label:'支出',data:expArr,backgroundColor:'#D85A30'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{display:false}},scales:{x:{ticks:{autoSkip:false}},y:{ticks:{callback:v=>'¥'+Math.round(v).toLocaleString('ja-JP')}}}}});
   // 予算対比表（今月）
