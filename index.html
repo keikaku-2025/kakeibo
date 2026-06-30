@@ -420,21 +420,21 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
 </div>
 
 <!-- 今月の予定追加モーダル -->
-<div class="modal-overlay" id="modal-add-plan" style="display:none;" onclick="closeModal('modal-add-plan')">
+<div class="modal-overlay" id="modal-add-plan" style="display:none;" onclick="if(event.target===this)closeModal('modal-add-plan')">
   <div class="modal-box" onclick="event.stopPropagation()">
     <div class="modal-title">予定を追加</div>
     <div class="form-group">
       <label>内容</label>
-      <input type="text" id="plan-name" placeholder="例：旅行、歯医者">
+      <input type="text" id="plan-name" placeholder="例：旅行、歯医者" onclick="event.stopPropagation()">
     </div>
     <div class="form-group">
       <label>日付（任意）</label>
-      <div style="display:flex;gap:8px;align-items:center;">
-        <select id="plan-month" style="flex:1;">
+      <div style="display:flex;gap:8px;align-items:center;" onclick="event.stopPropagation()">
+        <select id="plan-month" style="flex:1;" onclick="event.stopPropagation()" onchange="event.stopPropagation()">
           <option value="">月を選択</option>
         </select>
         <span style="color:var(--muted);">/</span>
-        <select id="plan-day" style="flex:1;">
+        <select id="plan-day" style="flex:1;" onclick="event.stopPropagation()" onchange="event.stopPropagation()">
           <option value="">日を選択</option>
         </select>
       </div>
