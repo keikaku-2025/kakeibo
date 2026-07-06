@@ -236,7 +236,14 @@ select{background-image:url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/
         <button class="inner-tab" onclick="assetsTab('add',this)">追加</button>
       </div>
       <div id="at-list"><div id="assets-list-container"></div></div>
-      <div id="at-card" style="display:none;"><div class="sec-title">カード請求サマリー</div><div id="card-summary-container"></div></div>
+      <div id="at-card" style="display:none;">
+        <div class="month-nav" style="margin-bottom:10px;">
+          <button onclick="chCardMonth(-1)">‹</button>
+          <span class="month-label" id="card-mlabel"></span>
+          <button onclick="chCardMonth(1)">›</button>
+        </div>
+        <div id="card-summary-container"></div>
+      </div>
       <div id="at-add" style="display:none;">
         <div class="page-title" style="font-size:15px;">新しい資産を追加</div>
         <div class="form-group"><label>名前</label><input type="text" id="na-name" placeholder="例：楽天カード、三菱UFJ、PayPay"></div>
@@ -496,6 +503,7 @@ function todayStr(){
 }
 
 let curY=new Date().getFullYear(), curM=new Date().getMonth();
+let cardY=new Date().getFullYear(), cardM=new Date().getMonth();
 let graphOffset=0, curGraphTab='cat';
 let calSelectedDate=null;
 let pieChart=null, barChart=null, bankChart=null;
@@ -847,7 +855,11 @@ function assetsTab(t,btn){
   ['list','card','add'].forEach(n=>document.getElementById('at-'+n).style.display=n===t?'':'none');
   document.querySelectorAll('#page-assets .inner-tab').forEach(b=>b.classList.remove('active'));
   if(btn)btn.classList.add('active');
-  if(t==='card')renderCardSummary();
+  if(t==='card'){
+    // カードタブを開くたびに当月に戻す
+    cardY=curY;cardM=curM;
+    renderCardSummary();
+  }
   if(t==='list')renderAssetsList();
 }
 function renderAssets(){renderAssetsList();refreshAssetSelects();}
@@ -920,24 +932,40 @@ function saveEditAsset(){
   saveState();closeModal('modal-edit-asset');renderAssetsList();refreshAssetSelects();
 }
 function closeModal(id){document.getElementById(id).style.display='none';}
+function chCardMonth(d){
+  cardM+=d;
+  if(cardM>11){cardM=0;cardY++;}
+  if(cardM<0){cardM=11;cardY--;}
+  renderCardSummary();
+}
+
 function renderCardSummary(){
+  document.getElementById('card-mlabel').textContent=cardY+'年'+(cardM+1)+'月';
   const cards=S.assets.filter(a=>a.type==='credit');
   const c=document.getElementById('card-summary-container');
   if(!cards.length){c.innerHTML='<div class="empty">カードが登録されていません</div>';return;}
   c.innerHTML=cards.map(card=>{
     const linked=card.linkedAssetId?byId(card.linkedAssetId):null;
-    const thisMonth=cardMonthTotal(card,curY,curM);
-    const payDateVal=card.nextPayDate||'';
-    const payAmtVal=card.nextPayAmount!=null?card.nextPayAmount:'';
+    // cardY/cardM月の締め分（参考）
+    const thisMonth=cardMonthTotal(card,cardY,cardM);
+    // この月の引落予定を取得（paySchedules配列で管理）
+    if(!card.paySchedules)card.paySchedules=[];
+    const schedKey=`${cardY}-${String(cardM+1).padStart(2,'0')}`;
+    const sched=card.paySchedules.find(s=>s.monthKey===schedKey)||{};
+    const payDateVal=sched.payDate||'';
+    const payAmtVal=sched.payAmount!=null?sched.payAmount:'';
     return `<div class="card-summary-item">
       <div class="cs-name"><i class="ti ti-credit-card"></i>${card.name}</div>
       <div class="cs-row"><span>締め日</span><span class="val">毎月${card.closeDay}日</span></div>
       <div class="cs-row"><span>支払日</span><span class="val">翌月${card.payDay}日</span></div>
       <div class="cs-row"><span>引落口座</span><span class="val">${linked?linked.name:'未設定'}</span></div>
-      <div class="cs-row"><span>${curM+1}月締め分（参考）</span><span class="val">${fmt(thisMonth)}</span></div>
+      <div class="cs-row">
+        <span style="font-weight:600;">${cardM+1}月締め分（家計簿参考値）</span>
+        <span class="val" style="color:var(--red);">${fmt(thisMonth)}</span>
+      </div>
 
       <div style="margin-top:14px;padding:12px;background:var(--bg);border-radius:10px;">
-        <div style="font-size:12px;font-weight:600;margin-bottom:10px;"><i class="ti ti-calendar-due"></i> 引落予定を登録</div>
+        <div style="font-size:12px;font-weight:600;margin-bottom:10px;"><i class="ti ti-calendar-due"></i> ${cardM+1}月締め分の引落予定</div>
         <div class="form-group" style="margin-bottom:10px;">
           <label>引落予定日</label>
           <input type="date" id="paydate-input-${card.id}" value="${payDateVal}"
@@ -958,6 +986,22 @@ function renderCardSummary(){
           ${payDateVal?`<button onclick="clearPayDate(${card.id})" style="padding:10px 14px;background:#fff;color:var(--red);border:1px solid var(--border);border-radius:8px;font-size:13px;cursor:pointer;">取消</button>`:''}
         </div>
       </div>
+
+      <!-- 過去の引落履歴 -->
+      ${card.paySchedules&&card.paySchedules.filter(s=>s.payDate).length>1?`
+      <div style="margin-top:10px;">
+        <div style="font-size:12px;font-weight:600;color:var(--muted);margin-bottom:6px;">引落予定・履歴</div>
+        <div class="tx-list">
+          ${card.paySchedules.filter(s=>s.payDate).sort((a,b)=>b.monthKey.localeCompare(a.monthKey)).map(s=>`
+            <div class="tx-item">
+              <div class="tx-left">
+                <div class="tx-name">${s.monthKey.replace('-','年')}月締め分</div>
+                <div class="tx-sub">${s.payDate} 引落予定</div>
+              </div>
+              <span class="tx-amt exp">${fmt(s.payAmount)}</span>
+            </div>`).join('')}
+        </div>
+      </div>`:''}
     </div>`;
   }).join('');
 }
@@ -968,40 +1012,52 @@ function savePayDate(cardId){
   const amtVal=document.getElementById(`payamt-input-${cardId}`).value;
   if(!dateVal){alert('引落予定日を入力してください');return;}
   if(!amtVal||parseFloat(amtVal)<=0){alert('引落金額を入力してください');return;}
-  card.nextPayDate=dateVal;
-  card.nextPayAmount=parseFloat(amtVal);
-  saveState();
-  renderCardSummary();
-  renderHome();
+  if(!card.paySchedules)card.paySchedules=[];
+  const schedKey=`${cardY}-${String(cardM+1).padStart(2,'0')}`;
+  const idx=card.paySchedules.findIndex(s=>s.monthKey===schedKey);
+  const entry={monthKey:schedKey,payDate:dateVal,payAmount:parseFloat(amtVal)};
+  if(idx>=0)card.paySchedules[idx]=entry;
+  else card.paySchedules.push(entry);
+  // 後方互換のためnextPayDate/nextPayAmountも更新
+  card.nextPayDate=dateVal;card.nextPayAmount=parseFloat(amtVal);
+  saveState();renderCardSummary();renderHome();
   alert(`${dateVal} に ${fmt(card.nextPayAmount)} の引落予定を登録しました`);
 }
 
 function clearPayDate(cardId){
   const card=byId(cardId);if(!card)return;
-  if(!confirm('引落予定を取り消しますか？'))return;
-  card.nextPayDate=null;card.nextPayAmount=null;
+  if(!confirm('この月の引落予定を取り消しますか？'))return;
+  const schedKey=`${cardY}-${String(cardM+1).padStart(2,'0')}`;
+  if(card.paySchedules)card.paySchedules=card.paySchedules.filter(s=>s.monthKey!==schedKey);
+  // 最新の予定をnextPayDate/nextPayAmountに反映
+  const latest=card.paySchedules&&card.paySchedules.length
+    ?card.paySchedules.sort((a,b)=>b.monthKey.localeCompare(a.monthKey))[0]:null;
+  card.nextPayDate=latest?latest.payDate:null;
+  card.nextPayAmount=latest?latest.payAmount:null;
   saveState();renderCardSummary();renderHome();
 }
 
 function checkAndProcessCardPayments(){
   const today=todayStr();let processed=false;
   S.assets.filter(a=>a.type==='credit').forEach(card=>{
-    if(!card.nextPayDate||card.nextPayDate!==today)return;
-    const linked=card.linkedAssetId?byId(card.linkedAssetId):null;
-    if(!linked)return;
-    const amount=card.nextPayAmount||0;if(amount<=0)return;
-    // 同日に既に処理済みか確認
-    const already=S.transactions.some(t=>t.isCardPayment&&t.cardId===card.id&&t.date===today);
-    if(already)return;
-    // 銀行から引落
-    linked.balance-=amount;
-    S.transactions.push({
-      id:S.nextId++,date:today,type:'expense',cat:'カード引落',
-      amount,assetId:linked.id,cardId:card.id,
-      note:`${card.name}引落`,isCardPayment:true
+    if(!card.paySchedules)card.paySchedules=[];
+    card.paySchedules.forEach(sched=>{
+      if(!sched.payDate||sched.payDate!==today||sched.done)return;
+      const linked=card.linkedAssetId?byId(card.linkedAssetId):null;
+      if(!linked)return;
+      const amount=sched.payAmount||0;if(amount<=0)return;
+      const already=S.transactions.some(t=>t.isCardPayment&&t.cardId===card.id&&t.date===today&&t.schedKey===sched.monthKey);
+      if(already)return;
+      linked.balance-=amount;
+      S.transactions.push({
+        id:S.nextId++,date:today,type:'expense',cat:'カード引落',
+        amount,assetId:linked.id,cardId:card.id,schedKey:sched.monthKey,
+        note:`${card.name}引落（${sched.monthKey.replace('-','年')}月締め）`,
+        isCardPayment:true
+      });
+      sched.done=true;
+      processed=true;
     });
-    card.nextPayDate=null;card.nextPayAmount=null;
-    processed=true;
   });
   if(processed)saveState();
 }
