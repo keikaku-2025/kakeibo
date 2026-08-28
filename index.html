@@ -1006,7 +1006,7 @@ function savePayDate(cardId){
   if(!card.paySchedules)card.paySchedules=[];
   const schedKey=`${cardY}-${String(cardM+1).padStart(2,'0')}`;
   const idx=card.paySchedules.findIndex(s=>s.monthKey===schedKey);
-  const entry={monthKey:schedKey,payDate:dateVal,payAmount:parseFloat(amtVal)};
+  const entry={monthKey:schedKey,payDate:dateVal,payAmount:parseFloat(amtVal),done:false};
   if(idx>=0)card.paySchedules[idx]=entry;
   else card.paySchedules.push(entry);
   // 後方互換のためnextPayDate/nextPayAmountも更新
@@ -1029,28 +1029,47 @@ function clearPayDate(cardId){
 }
 
 function checkAndProcessCardPayments(){
-  const today=todayStr();let processed=false;
+  const today=todayStr();
+  let processed=false;
   S.assets.filter(a=>a.type==='credit').forEach(card=>{
-    if(!card.paySchedules)card.paySchedules=[];
+    if(!card.paySchedules||!card.paySchedules.length)return;
     card.paySchedules.forEach(sched=>{
-      if(!sched.payDate||sched.payDate!==today||sched.done)return;
+      // 今日が引落予定日でない・金額なし・処理済みはスキップ
+      if(!sched.payDate||sched.payDate!==today)return;
+      if(sched.done)return;
+      if(!sched.payAmount||sched.payAmount<=0)return;
       const linked=card.linkedAssetId?byId(card.linkedAssetId):null;
-      if(!linked)return;
-      const amount=sched.payAmount||0;if(amount<=0)return;
-      const already=S.transactions.some(t=>t.isCardPayment&&t.cardId===card.id&&t.date===today&&t.schedKey===sched.monthKey);
-      if(already)return;
-      linked.balance-=amount;
+      if(!linked){
+        console.warn(`カード${card.name}の引落口座が未設定`);return;
+      }
+      // 二重処理チェック（同日・同カード・同schedKey）
+      const already=S.transactions.some(t=>
+        t.isCardPayment&&t.cardId===card.id&&t.date===today&&t.schedKey===sched.monthKey
+      );
+      if(already){sched.done=true;return;}
+      // 引落実行
+      linked.balance-=sched.payAmount;
       S.transactions.push({
-        id:S.nextId++,date:today,type:'expense',cat:'カード引落',
-        amount,assetId:linked.id,cardId:card.id,schedKey:sched.monthKey,
-        note:`${card.name}引落（${sched.monthKey.replace('-','年')}月締め）`,
+        id:S.nextId++,
+        date:today,
+        type:'expense',
+        cat:'カード引落',
+        amount:sched.payAmount,
+        assetId:linked.id,
+        cardId:card.id,
+        schedKey:sched.monthKey,
+        note:`${card.name}引落`,
         isCardPayment:true
       });
       sched.done=true;
       processed=true;
     });
   });
-  if(processed)saveState();
+  if(processed){
+    saveState();
+    // 引落が実行された場合はホームを更新
+    renderHome();
+  }
 }
 function delAsset(id){if(!confirm('この資産を削除しますか？'))return;S.assets=S.assets.filter(a=>a.id!==id);saveState();renderAssets();}
 function onNewAssetType(){
